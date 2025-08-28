@@ -6,6 +6,124 @@ Professional Model Context Protocol (MCP) server for comprehensive Dolibarr ERP 
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-1.0.0-orange.svg)](https://modelcontextprotocol.io)
 
+## 🚀 Quick Start
+
+### Automated Setup (Recommended)
+
+**For Windows:**
+```bash
+git clone https://github.com/latinogino/dolibarr-mcp.git
+cd dolibarr-mcp
+setup.bat
+```
+
+**For Linux/Mac:**
+```bash
+git clone https://github.com/latinogino/dolibarr-mcp.git
+cd dolibarr-mcp
+chmod +x setup.sh
+./setup.sh
+```
+
+This will:
+- Create a virtual environment (`venv_dolibarr`)
+- Install all dependencies
+- Create a `.env` configuration file
+- Test the installation
+
+### Manual Setup
+
+```bash
+git clone https://github.com/latinogino/dolibarr-mcp.git
+cd dolibarr-mcp
+
+# Create virtual environment
+python -m venv venv_dolibarr
+
+# Activate virtual environment
+# Windows:
+venv_dolibarr\Scripts\activate
+# Linux/Mac:
+source venv_dolibarr/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+pip install -e .
+```
+
+## ⚙️ Configuration
+
+Edit the `.env` file with your Dolibarr instance details:
+
+```env
+# Dolibarr API Configuration
+DOLIBARR_URL=https://your-dolibarr-instance.com/api/index.php
+DOLIBARR_API_KEY=your_dolibarr_api_key_here
+
+# Logging Configuration
+LOG_LEVEL=INFO
+```
+
+### Dolibarr API Setup
+
+1. **Enable the API module** in Dolibarr:
+   - Go to Home → Setup → Modules
+   - Enable "Web Services API REST (developer)"
+
+2. **Create an API key**:
+   - Go to Home → Setup → API/Web services
+   - Create a new API key for your user
+   - Ensure the user has appropriate permissions
+
+3. **Test the API**:
+   ```bash
+   curl -X GET "https://your-dolibarr-instance.com/api/index.php/status" \
+     -H "DOLAPIKEY: your_api_key_here"
+   ```
+
+## 🏃‍♂️ Running the Server
+
+### Development Mode
+
+**Windows:**
+```bash
+venv_dolibarr\Scripts\python.exe -m dolibarr_mcp.dolibarr_mcp_server
+```
+
+**Linux/Mac:**
+```bash
+venv_dolibarr/bin/python -m dolibarr_mcp.dolibarr_mcp_server
+```
+
+### With Claude Desktop
+
+Add to your Claude Desktop configuration file:
+
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+**Mac:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "dolibarr-mcp": {
+      "command": "C:\\path\\to\\your\\dolibarr-mcp\\venv_dolibarr\\Scripts\\python.exe",
+      "args": ["-m", "dolibarr_mcp.dolibarr_mcp_server"],
+      "cwd": "C:\\path\\to\\your\\dolibarr-mcp",
+      "env": {
+        "DOLIBARR_URL": "https://your-dolibarr-instance.com/api/index.php",
+        "DOLIBARR_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+### Docker (Alternative)
+
+```bash
+docker-compose up
+```
+
 ## 🚀 Features
 
 ### Complete ERP Management
@@ -35,87 +153,7 @@ Professional Model Context Protocol (MCP) server for comprehensive Dolibarr ERP 
 - Dolibarr instance with API enabled
 - Dolibarr API key with appropriate permissions
 
-## 🛠️ Installation
-
-### From Source
-
-```bash
-# Clone the repository
-git clone https://github.com/latinogino/dolibarr-mcp.git
-cd dolibarr-mcp
-
-# Install in development mode
-pip install -e .
-
-# Or install dependencies directly
-pip install -r requirements.txt
-```
-
-### Using pip (when published)
-
-```bash
-pip install dolibarr-mcp
-```
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-Create a `.env` file in your project directory:
-
-```bash
-# Copy the example file
-cp .env.example .env
-```
-
-Edit the `.env` file with your Dolibarr configuration:
-
-```env
-# Dolibarr API Configuration
-DOLIBARR_URL=https://your-dolibarr-instance.com/api/index.php
-DOLIBARR_API_KEY=your_dolibarr_api_key_here
-
-# Logging Configuration
-LOG_LEVEL=INFO
-```
-
-### Dolibarr API Setup
-
-1. **Enable the API module** in Dolibarr:
-   - Go to Home → Setup → Modules
-   - Enable "Web Services API REST (developer)"
-
-2. **Create an API key**:
-   - Go to Home → Setup → API/Web services
-   - Create a new API key for your user
-   - Ensure the user has appropriate permissions
-
-3. **Test the API**:
-   ```bash
-   curl -X GET "https://your-dolibarr-instance.com/api/index.php/status" \
-     -H "DOLAPIKEY: your_api_key_here"
-   ```
-
-## 🚀 Usage
-
-### Command Line Interface
-
-Test your connection:
-```bash
-dolibarr-mcp test
-```
-
-Test with specific credentials:
-```bash
-dolibarr-mcp test --url "https://your-instance.com/api/index.php" --api-key "your_key"
-```
-
-Start the MCP server:
-```bash
-dolibarr-mcp serve
-```
-
-### As an MCP Server
+## 🛠️ Available Tools
 
 The server exposes comprehensive tools for Dolibarr management:
 
@@ -168,7 +206,7 @@ The server exposes comprehensive tools for Dolibarr management:
 #### Raw API Access
 - `dolibarr_raw_api` - Make direct API calls to any endpoint
 
-### Programmatic Usage
+## 💻 Programmatic Usage
 
 ```python
 import asyncio
@@ -197,44 +235,6 @@ async def main():
 asyncio.run(main())
 ```
 
-## 🏗️ Architecture
-
-### Project Structure
-
-```
-dolibarr-mcp/
-├── src/dolibarr_mcp/
-│   ├── __init__.py           # Package exports
-│   ├── config.py             # Configuration management
-│   ├── cli.py                # Command line interface
-│   ├── dolibarr_client.py    # API client implementation
-│   └── dolibarr_mcp_server.py # MCP server implementation
-├── tests/                    # Test suite
-├── api/                      # API documentation
-├── pyproject.toml           # Project configuration
-├── requirements.txt         # Dependencies
-└── README.md               # This file
-```
-
-### API Client Architecture
-
-The `DolibarrClient` provides:
-
-- **Async Context Manager**: Proper session management
-- **Error Handling**: Custom `DolibarrAPIError` exceptions
-- **Request/Response Logging**: Detailed debugging information
-- **Type Safety**: Full type hints for all methods
-- **Flexible Configuration**: Environment-based configuration
-
-### MCP Server Architecture
-
-The MCP server follows the official MCP specification:
-
-- **Tool Registration**: Each operation is a registered tool
-- **Schema Validation**: Input/output validation using JSON schemas
-- **Error Propagation**: Meaningful error responses
-- **Async Operation**: Non-blocking request handling
-
 ## 🧪 Testing
 
 Run the test suite:
@@ -250,72 +250,81 @@ pytest
 pytest --cov=src/dolibarr_mcp
 ```
 
-Test specific functionality:
-
+Test API connection:
 ```bash
-# Test API connection
-dolibarr-mcp test
+# Windows:
+venv_dolibarr\Scripts\python.exe -c "from dolibarr_mcp import Config, DolibarrClient; import asyncio; asyncio.run(DolibarrClient(Config()).get_status())"
 
-# Test with verbose output
-dolibarr-mcp test --verbose
+# Linux/Mac:
+venv_dolibarr/bin/python -c "from dolibarr_mcp import Config, DolibarrClient; import asyncio; asyncio.run(DolibarrClient(Config()).get_status())"
 ```
 
-## 📝 API Reference
+## 🏗️ Project Structure
 
-### Configuration
-
-The `Config` class manages all configuration:
-
-```python
-from dolibarr_mcp import Config
-
-# From environment variables
-config = Config.from_env()
-
-# Manual configuration
-config = Config(
-    dolibarr_url="https://your-instance.com/api/index.php",
-    api_key="your_api_key",
-    log_level="DEBUG"
-)
+```
+dolibarr-mcp/
+├── src/dolibarr_mcp/
+│   ├── __init__.py              # Package exports
+│   ├── config.py                # Configuration management
+│   ├── cli.py                   # Command line interface
+│   ├── dolibarr_client.py       # API client implementation
+│   └── dolibarr_mcp_server.py   # MCP server implementation
+├── tests/                       # Test suite
+├── api/                         # API documentation
+├── setup.py                     # Development setup script
+├── setup.bat                    # Windows setup script
+├── setup.sh                     # Linux/Mac setup script
+├── pyproject.toml              # Project configuration
+├── requirements.txt            # Dependencies
+├── Dockerfile                  # Docker configuration
+├── docker-compose.yml          # Docker Compose configuration
+└── README.md                   # This file
 ```
 
-### Client Usage
+## 🐳 Docker Support
 
-```python
-from dolibarr_mcp import DolibarrClient, Config
-
-config = Config.from_env()
-
-async with DolibarrClient(config) as client:
-    # All operations here
-    pass
-```
-
-### Error Handling
-
-```python
-from dolibarr_mcp import DolibarrAPIError
-
-try:
-    result = await client.get_customers()
-except DolibarrAPIError as e:
-    print(f"API Error: {e.message}")
-    print(f"Status Code: {e.status_code}")
-    print(f"Response Data: {e.response_data}")
-```
-
-## 🐳 Docker Support (Coming Soon)
-
-Docker containerization is planned for the second phase of development:
+Build and run with Docker:
 
 ```bash
 # Build image
 docker build -t dolibarr-mcp .
 
-# Run container
+# Run with docker-compose
+docker-compose up
+
+# Run container directly
 docker run -p 8080:8080 --env-file .env dolibarr-mcp
 ```
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**1. Virtual Environment Not Found**
+```bash
+# Make sure you created the virtual environment:
+python -m venv venv_dolibarr
+
+# And use the correct path in Claude Desktop config
+```
+
+**2. API Connection Failed**
+```bash
+# Test your API key and URL:
+curl -X GET "https://your-dolibarr-instance.com/api/index.php/status" \
+  -H "DOLAPIKEY: your_api_key_here"
+```
+
+**3. Module Import Errors**
+```bash
+# Install in development mode:
+pip install -e .
+```
+
+**4. Permission Errors**
+- Ensure your Dolibarr user has API access
+- Check that the API module is enabled
+- Verify user permissions for the operations you want to perform
 
 ## 🤝 Contributing
 
@@ -332,11 +341,11 @@ docker run -p 8080:8080 --env-file .env dolibarr-mcp
 git clone https://github.com/yourusername/dolibarr-mcp.git
 cd dolibarr-mcp
 
-# Install in development mode
-pip install -e ".[dev]"
+# Run setup script
+python setup.py
 
-# Install pre-commit hooks
-pre-commit install
+# Install development dependencies
+pip install pytest pytest-asyncio pytest-cov
 
 # Run tests
 pytest
@@ -360,19 +369,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🗺️ Roadmap
 
-### Phase 1 (Current) ✅
+### Phase 1 (Completed) ✅
 - [x] Core MCP server implementation
 - [x] Full CRUD operations for main entities
 - [x] Professional error handling
-- [x] CLI interface
+- [x] Automated setup scripts
+- [x] Docker support
 - [x] Comprehensive documentation
 
 ### Phase 2 (Next)
-- [ ] Docker containerization
 - [ ] Advanced filtering and search
 - [ ] Webhook support
 - [ ] Performance optimization
 - [ ] Extended API coverage
+- [ ] Unit tests
 
 ### Phase 3 (Future)
 - [ ] Web UI for management
