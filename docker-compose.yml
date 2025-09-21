@@ -2,88 +2,92 @@ version: '3.8'
 
 services:
   dolibarr-mcp:
-    build:
+    build: 
       context: .
       dockerfile: Dockerfile
-      target: production
+    image: dolibarr-mcp:latest
     container_name: dolibarr-mcp-server
     restart: unless-stopped
+    environment:
+      # Dolibarr API Configuration
+      - DOLIBARR_URL=${DOLIBARR_URL:-https://your-dolibarr-instance.com/api/index.php}
+      - DOLIBARR_API_KEY=${DOLIBARR_API_KEY:-your_api_key_here}
+      
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PYTHONUNBUFFERED=1
+      
+      # MCP Server Configuration
+      - MCP_SERVER_NAME=dolibarr-mcp
+      - MCP_SERVER_VERSION=1.0.0
+    
+    volumes:
+      # Mount configuration if needed
+      - ./.env:/app/.env:ro
+      
+      # Optional: Mount for custom configurations or plugins
+      # - ./config:/app/config:ro
+      # - ./plugins:/app/plugins:ro
+    
+    # Expose port for future HTTP interface
     ports:
       - "8080:8080"
-    environment:
-      - DOLIBARR_URL=${DOLIBARR_URL}
-      - DOLIBARR_API_KEY=${DOLIBARR_API_KEY}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    env_file:
-      - .env
+    
+    # Health check
     healthcheck:
-      test: ["CMD", "dolibarr-mcp", "test"]
+      test: ["CMD", "python", "-c", "import sys; from src.dolibarr_mcp.config import Config; sys.exit(0 if Config().api_key else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
     networks:
       - dolibarr-mcp-network
-    volumes:
-      # Optional: Mount logs directory
-      - ./logs:/app/logs:rw
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.dolibarr-mcp.rule=Host(`dolibarr-mcp.localhost`)"
-      - "traefik.http.routers.dolibarr-mcp.entrypoints=web"
-      - "traefik.http.services.dolibarr-mcp.loadbalancer.server.port=8080"
 
-  # Optional: Development service with hot reload
-  dolibarr-mcp-dev:
-    build:
+  # Optional: Include a test service
+  dolibarr-mcp-test:
+    build: 
       context: .
       dockerfile: Dockerfile
-      target: builder
-    container_name: dolibarr-mcp-dev
-    restart: "no"
-    ports:
-      - "8081:8080"
+    image: dolibarr-mcp:latest
+    container_name: dolibarr-mcp-test
     environment:
       - DOLIBARR_URL=${DOLIBARR_URL}
       - DOLIBARR_API_KEY=${DOLIBARR_API_KEY}
       - LOG_LEVEL=DEBUG
-    env_file:
-      - .env
     volumes:
-      - .:/app:rw
-      - /app/src/dolibarr_mcp.egg-info  # Exclude egg-info
-    working_dir: /app
-    command: ["python", "-m", "dolibarr_mcp.cli", "serve"]
+      - ./.env:/app/.env:ro
+      - ./test_dolibarr_mcp.py:/app/test_dolibarr_mcp.py:ro
+    command: python /app/test_dolibarr_mcp.py
+    profiles:
+      - test
     networks:
       - dolibarr-mcp-network
-    profiles:
-      - dev
-
-  # Optional: Reverse proxy for production deployment
-  traefik:
-    image: traefik:v2.10
-    container_name: dolibarr-mcp-traefik
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "8090:8080"  # Traefik dashboard
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - dolibarr-mcp-network
-    profiles:
-      - proxy
 
 networks:
   dolibarr-mcp-network:
     driver: bridge
-    name: dolibarr-mcp-network
+    name: dolibarr-mcp-net
 
-volumes:
-  logs:
-    driver: local
+# To run the main server:
+# docker-compose up
+
+# To run tests:
+# docker-compose --profile test up dolibarr-mcp-test
