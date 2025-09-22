@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dolibarr-mcp"
-version = "1.0.0"
+version = "1.0.1"
 description = "Professional Model Context Protocol server for complete Dolibarr ERP management with comprehensive CRUD operations and business intelligence"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -33,7 +33,7 @@ classifiers = [
     "Topic :: System :: Systems Administration",
 ]
 dependencies = [
-    "mcp>=1.0.0",
+    "mcp>=0.9.0",
     "requests>=2.31.0",
     "aiohttp>=3.9.0",
     "pydantic>=2.5.0",
