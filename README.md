@@ -42,22 +42,50 @@ The Dolibarr MCP Server provides a powerful bridge between AI assistants (like C
 
 ### Installation
 
-#### Option 1: Using Python (Recommended for Development)
+#### Option 1: Using Setup Scripts (Windows)
 
 ```bash
 # Clone the repository
 git clone https://github.com/latinogino/dolibarr-mcp.git
 cd dolibarr-mcp
 
-# Run the setup script
-python setup.py
+# If you have installation issues, run cleanup first
+cleanup.bat
+
+# Run the automated setup
+setup.bat
+
+# Configure your credentials
+copy .env.example .env
+# Edit .env with your Dolibarr credentials
+```
+
+#### Option 2: Manual Python Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/latinogino/dolibarr-mcp.git
+cd dolibarr-mcp
+
+# Create virtual environment
+python -m venv venv_dolibarr
+
+# Activate virtual environment
+# Windows:
+venv_dolibarr\Scripts\activate
+# Linux/Mac:
+source venv_dolibarr/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+pip install -e .
 
 # Configure your credentials
 cp .env.example .env
 # Edit .env with your Dolibarr credentials
 ```
 
-#### Option 2: Using Docker (Recommended for Production)
+#### Option 3: Using Docker (Recommended for Production)
 
 ```bash
 # Clone the repository
@@ -206,6 +234,66 @@ docker-compose up -d
 docker-compose --profile test up dolibarr-mcp-test
 ```
 
+## 🛠️ Troubleshooting
+
+### Common Issues and Solutions
+
+#### 1. "Multiple .egg-info directories found" Error
+
+**Problem**: Installation fails with assertion error about multiple egg-info directories.
+
+**Solution**:
+```bash
+# Windows
+cleanup.bat
+setup.bat
+
+# Linux/Mac
+rm -rf *.egg-info src/*.egg-info build/ dist/
+python setup.py
+```
+
+#### 2. "ModuleNotFoundError: No module named 'dolibarr_mcp'"
+
+**Problem**: Python cannot find the dolibarr_mcp module.
+
+**Solution**:
+```bash
+# Ensure you're in the virtual environment
+# Windows:
+venv_dolibarr\Scripts\activate
+# Linux/Mac:
+source venv_dolibarr/bin/activate
+
+# Reinstall in editable mode
+pip install -e .
+```
+
+#### 3. API Connection Issues
+
+**Problem**: Cannot connect to Dolibarr API.
+
+**Solution**:
+- Verify your Dolibarr URL ends with `/api/index.php`
+- Check API key is valid in Dolibarr settings
+- Ensure API module is enabled in Dolibarr
+- Test connection: `python test_connection.py`
+
+#### 4. Virtual Environment Issues
+
+**Problem**: Virtual environment not working correctly.
+
+**Solution**:
+```bash
+# Remove and recreate
+# Windows:
+rmdir /s /q venv_dolibarr
+python -m venv venv_dolibarr
+venv_dolibarr\Scripts\activate
+pip install -r requirements.txt
+pip install -e .
+```
+
 ## 🧪 Development
 
 ### Project Structure
@@ -226,6 +314,8 @@ dolibarr-mcp/
 ├── pyproject.toml
 ├── requirements.txt
 ├── setup.py
+├── setup.bat          # Windows setup script
+├── cleanup.bat        # Windows cleanup script
 └── README.md
 ```
 
