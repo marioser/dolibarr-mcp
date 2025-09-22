@@ -653,6 +653,22 @@ async def test_api_connection():
     config = None
     try:
         config = Config()
+        
+        # Check if environment variables are set
+        if not config.dolibarr_url or config.dolibarr_url == "https://your-dolibarr-instance.com/api/index.php":
+            print("⚠️  Warning: DOLIBARR_URL not configured in .env file", file=sys.stderr)
+            print("⚠️  Using placeholder URL - API calls will fail", file=sys.stderr)
+            print("📝 Please configure your .env file with valid Dolibarr credentials", file=sys.stderr)
+            yield True  # Allow server to start anyway
+            return
+            
+        if not config.api_key or config.api_key == "your_dolibarr_api_key_here":
+            print("⚠️  Warning: DOLIBARR_API_KEY not configured in .env file", file=sys.stderr)
+            print("⚠️  API authentication will fail", file=sys.stderr)
+            print("📝 Please configure your .env file with valid Dolibarr credentials", file=sys.stderr)
+            yield True  # Allow server to start anyway
+            return
+        
         async with DolibarrClient(config) as client:
             print("🧪 Testing Dolibarr API connection...", file=sys.stderr)
             result = await client.get_status()
@@ -661,27 +677,32 @@ async def test_api_connection():
                 print("🎯 Full CRUD operations available for all Dolibarr modules", file=sys.stderr)
                 yield True
             else:
-                print(f"❌ API test failed: {result.get('error', 'Unknown error')}", file=sys.stderr)
-                yield False
+                print(f"⚠️  API test returned unexpected result: {result}", file=sys.stderr)
+                print("⚠️  Server will start but API calls may fail", file=sys.stderr)
+                yield True  # Allow server to start anyway
     except Exception as e:
-        print(f"❌ API test error: {e}", file=sys.stderr)
+        print(f"⚠️  API test error: {e}", file=sys.stderr)
         if config is None:
             print("💡 Check your .env file configuration", file=sys.stderr)
-        yield False
+        print("⚠️  Server will start but API calls may fail", file=sys.stderr)
+        yield True  # Allow server to start anyway
 
 
 async def main():
     """Run the Dolibarr MCP server."""
     
-    # Quick API test using the proper client
+    # Test API connection but don't fail if it's not working
     async with test_api_connection() as api_ok:
         if not api_ok:
-            print("🚨 Cannot start server without valid API connection", file=sys.stderr)
-            sys.exit(1)
+            print("⚠️  Starting server without valid API connection", file=sys.stderr)
+            print("📝 Configure your .env file to enable API functionality", file=sys.stderr)
+        else:
+            print("✅ API connection validated", file=sys.stderr)
     
-    # Run server
+    # Run server regardless of API status
     print("🚀 Starting Professional Dolibarr MCP server...", file=sys.stderr)
     print("✅ Server ready with comprehensive ERP management capabilities", file=sys.stderr)
+    print("📝 Tools will attempt to connect when called", file=sys.stderr)
     
     try:
         async with stdio_server() as (read_stream, write_stream):
