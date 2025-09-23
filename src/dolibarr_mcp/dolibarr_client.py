@@ -304,14 +304,32 @@ class DolibarrClient:
         self,
         label: str,
         price: float,
+        ref: Optional[str] = None,  # Product reference/SKU
         description: Optional[str] = None,
         stock: Optional[int] = None,
         **kwargs
     ) -> Dict[str, Any]:
-        """Create a new product."""
+        """Create a new product.
+        
+        Args:
+            label: Product name/label
+            price: Product price
+            ref: Product reference/SKU (required by Dolibarr, auto-generated if not provided)
+            description: Product description
+            stock: Initial stock quantity
+            **kwargs: Additional product fields
+        """
+        import time
+        
+        # Generate ref if not provided (required field in Dolibarr)
+        if ref is None:
+            ref = f"PROD-{int(time.time())}"
+        
         data = {
+            "ref": ref,  # Required field
             "label": label,
             "price": price,
+            "price_ttc": price,  # Price including tax (using same as price for simplicity)
             **kwargs
         }
         
