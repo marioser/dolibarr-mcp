@@ -25,16 +25,19 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-src/*.egg-info/
-*.egg-info
 
-# PyInstaller
-*.manifest
-*.spec
+# Virtual environments
+venv/
+ENV/
+env/
+venv_dolibarr/
+.venv/
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
 
 # Unit test / coverage reports
 htmlcov/
@@ -51,42 +54,37 @@ coverage.xml
 .pytest_cache/
 cover/
 
-# Virtual environments
+# Environments
 .env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-venv_dolibarr/
+.env.local
 
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
 
 # macOS
 .DS_Store
 
 # Windows
 Thumbs.db
-ehthumbs.db
-Desktop.ini
+desktop.ini
 
 # Logs
 *.log
 logs/
 
-# MCP specific
-.mcp/
-mcp-server.log
-
-# Dolibarr specific
-dolibarr_config.json
-
-# Local development
-local/
-.local/
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
