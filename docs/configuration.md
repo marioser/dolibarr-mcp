@@ -6,7 +6,7 @@ host application that will launch the server.
 
 | Variable            | Description                                                    |
 | ------------------- | -------------------------------------------------------------- |
-| `DOLIBARR_URL`      | Base API URL, e.g. `https://your-dolibarr.example.com/api/index.php` |
+| `DOLIBARR_URL`      | Base API URL, e.g. `https://your-dolibarr.example.com/api/index.php` (legacy configs that still export `DOLIBARR_BASE_URL` are also honoured) |
 | `DOLIBARR_API_KEY`  | Personal Dolibarr API token assigned to your user              |
 | `LOG_LEVEL`         | Optional logging level (`INFO`, `DEBUG`, `WARNING`, …)         |
 

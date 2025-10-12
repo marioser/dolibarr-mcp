@@ -1,7 +1,16 @@
 # Dolibarr MCP Server
 
 Dolibarr MCP is a focused Model Context Protocol (MCP) server that exposes the
-most useful Dolibarr ERP/CRM operations to AI copilots.
+most useful Dolibarr ERP/CRM operations to AI copilots. The repository mirrors
+the clean layout used by [`prestashop-mcp`](https://github.com/latinogino/prestashop-mcp):
+a single production-ready server implementation, an async HTTP client, and a
+self-contained documentation bundle.
+
+
+This MCP server enables complete management of your Dolibarr ERP/CRM through AI
+tools such as Claude Desktop. With specialised tools you can manage customers,
+products, invoices, orders, contacts, and system administration tasks from a
+single MCP endpoint.
 
 This MCP server enables complete management of your Dolibarr ERP/CRM through AI
 tools such as Claude Desktop. With specialised tools you can manage customers,
@@ -62,11 +71,11 @@ pip install -e '.[dev]'
 ### Windows (Visual Studio `vsenv`)
 
 1. Launch the **x64 Native Tools Command Prompt for VS** or **Developer PowerShell for VS** (`vsenv`).
-2. Create a virtual environment: `py -3 -m venv .venv`.
+2. Create a virtual environment next to the repository root: `py -3 -m venv .venv`.
 3. Activate it: `call .venv\\Scripts\\activate.bat` (Command Prompt) or `.\\.venv\\Scripts\\Activate.ps1` (PowerShell).
 4. Install the package: `pip install -e .`.
 5. Install development extras when required: `pip install -e .[dev]` (PowerShell requires escaping brackets: ``pip install -e .`[dev`]``).
-6. Note the Python path (`where python`) for integration with Claude Desktop or other MCP hosts.
+6. Run `where python` **inside** the activated environment and copy the reported path. Claude Desktop must use this exact `python.exe`; mismatched paths (for example, pointing at a non-existent `venv_dolibarr\Scripts\python.exe`) will produce an immediate `ENOENT` error and the server will show as *disconnected*.
 
 ### Docker
 
@@ -127,8 +136,6 @@ MCP server.
 - Contributions follow the same structure and documentation conventions as
   `prestashop-mcp` to keep the twin projects in sync.
 
-## 📄 License
-=======
 ```bash
 python -m dolibarr_mcp.cli test --url https://your-dolibarr.example.com/api/index.php --api-key YOUR_KEY
 ```
@@ -144,7 +151,6 @@ python -m dolibarr_mcp.cli test --url https://your-dolibarr.example.com/api/inde
 - **Contacts** – `get_contacts`, `get_contact_by_id`, `create_contact`, `update_contact`, `delete_contact`
 - **Raw API access** – `dolibarr_raw_api`
 
-
-## License
+## 📄 License
 
 This project is released under the [MIT License](LICENSE).

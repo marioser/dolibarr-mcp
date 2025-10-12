@@ -4,8 +4,6 @@ All notable changes to the Dolibarr MCP Server are documented here. The project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and adopts the
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
-## [Unreleased]
-
 ### Added
 - Restored README.md and CHANGELOG.md after merge conflicts while preserving the streamlined structure shared with `prestashop-mcp`.
 - Documented platform-specific setup covering Linux/macOS shells, Windows Visual Studio `vsenv`, and the Docker workflow.
@@ -27,8 +25,6 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and adopts th
 ### Changed
 - Rewrote the README to highlight the streamlined structure and provide concise installation/run instructions.
 - Clarified that `dolibarr_mcp_server.py` is the definitive MCP entry point.
-
-## [Unreleased]
 
 ## [1.1.0] - 2024-05-22
 

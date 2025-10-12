@@ -25,6 +25,7 @@ source .venv/bin/activate
 vsenv
 py -3 -m venv .venv
 .\.venv\Scripts\Activate.ps1
+where python  # copy this path for Claude Desktop
 ```
 
 ## 3. Install the package
@@ -57,4 +58,7 @@ python -m dolibarr_mcp.cli serve
 ```
 
 The command starts the STDIO based MCP server that Claude Desktop and other
-clients can communicate with.
+clients can communicate with. When wiring the server into Claude Desktop, set
+`command` to the path returned by `where python` (Windows) or `which python`
+(Linux/macOS) while the virtual environment is activated, and use the arguments
+`-m dolibarr_mcp.cli serve`.
