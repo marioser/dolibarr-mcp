@@ -29,6 +29,11 @@ logging.basicConfig(
 server = Server("dolibarr-mcp")
 
 
+def _escape_sqlfilter(value: str) -> str:
+    """Escape single quotes for SQL filters."""
+    return value.replace("'", "''")
+
+
 @server.list_tools()
 async def handle_list_tools():
     """List all available tools."""
@@ -569,26 +574,27 @@ async def handle_call_tool(name: str, arguments: dict):
             
             # Search Tools
             elif name == "search_products_by_ref":
-                ref_prefix = arguments['ref_prefix']
+                ref_prefix = _escape_sqlfilter(arguments['ref_prefix'])
                 limit = arguments.get('limit', 20)
                 sqlfilters = f"(t.ref:like:'{ref_prefix}%')"
                 result = await client.search_products(sqlfilters=sqlfilters, limit=limit)
 
             elif name == "search_customers":
-                query = arguments['query']
+                query = _escape_sqlfilter(arguments['query'])
                 limit = arguments.get('limit', 20)
                 sqlfilters = f"((t.nom:like:'%{query}%') OR (t.name_alias:like:'%{query}%'))"
                 result = await client.search_customers(sqlfilters=sqlfilters, limit=limit)
 
             elif name == "search_products_by_label":
-                label_search = arguments['label_search']
+                label_search = _escape_sqlfilter(arguments['label_search'])
                 limit = arguments.get('limit', 20)
                 sqlfilters = f"(t.label:like:'%{label_search}%')"
                 result = await client.search_products(sqlfilters=sqlfilters, limit=limit)
 
             elif name == "resolve_product_ref":
                 ref = arguments['ref']
-                sqlfilters = f"(t.ref:like:'{ref}')"
+                ref_esc = _escape_sqlfilter(ref)
+                sqlfilters = f"(t.ref:like:'{ref_esc}')"
                 products = await client.search_products(sqlfilters=sqlfilters, limit=2)
                 
                 if not products:
@@ -599,7 +605,7 @@ async def handle_call_tool(name: str, arguments: dict):
                     # Check if one is exact match
                     exact_matches = [p for p in products if p.get('ref') == ref]
                     if len(exact_matches) == 1:
-                         result = {"status": "ok", "product": exact_matches[0]}
+                        result = {"status": "ok", "product": exact_matches[0]}
                     else:
                         result = {"status": "ambiguous", "message": f"Multiple products found for ref '{ref}'", "products": products}
 
