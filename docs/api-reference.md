@@ -27,6 +27,7 @@ implements for PrestaShop.
 | Products        | `/products`                 | Product CRUD operations                 |
 | Invoices        | `/invoices`                 | Invoice CRUD operations                 |
 | Orders          | `/orders`                   | Order CRUD operations                   |
+| Projects        | `/projects`                 | Project CRUD operations & Search        |
 | Contacts        | `/contacts`                 | Contact CRUD operations                 |
 | Raw passthrough | Any relative path           | `dolibarr_raw_api` tool for quick tests |
 
