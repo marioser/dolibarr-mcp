@@ -58,18 +58,18 @@ ENTITY_STRATEGIES: Dict[str, CacheStrategy] = {
     "get_project_by_id": CacheStrategy.MEDIUM,
     "search_projects": CacheStrategy.MEDIUM,
 
-    # Invoices - shorter cache, can change status
-    "get_invoices": CacheStrategy.SHORT,
-    "get_invoice_by_id": CacheStrategy.SHORT,
+    # Invoices - medium cache (5 min)
+    "get_invoices": CacheStrategy.MEDIUM,
+    "get_invoice_by_id": CacheStrategy.MEDIUM,
 
-    # Orders - shorter cache
-    "get_orders": CacheStrategy.SHORT,
-    "get_order_by_id": CacheStrategy.SHORT,
+    # Orders - medium cache (5 min)
+    "get_orders": CacheStrategy.MEDIUM,
+    "get_order_by_id": CacheStrategy.MEDIUM,
 
-    # Proposals - shorter cache, status changes
-    "get_proposals": CacheStrategy.SHORT,
-    "get_proposal_by_id": CacheStrategy.SHORT,
-    "search_proposals": CacheStrategy.SHORT,
+    # Proposals - medium cache (5 min)
+    "get_proposals": CacheStrategy.MEDIUM,
+    "get_proposal_by_id": CacheStrategy.MEDIUM,
+    "search_proposals": CacheStrategy.MEDIUM,
 
     # Write operations - never cache
     "create_customer": CacheStrategy.NO_CACHE,
