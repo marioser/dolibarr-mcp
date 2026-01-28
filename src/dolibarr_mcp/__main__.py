@@ -9,8 +9,15 @@ src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-from dolibarr_mcp.dolibarr_mcp_server import main
-import asyncio
+# Try new modular import first, fall back to legacy
+try:
+    from dolibarr_mcp.server.main import run
+except ImportError:
+    from dolibarr_mcp.dolibarr_mcp_server import main
+    import asyncio
+
+    def run():
+        asyncio.run(main())
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    run()

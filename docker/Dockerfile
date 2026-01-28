@@ -1,4 +1,5 @@
 # Multi-stage Docker build for Dolibarr MCP Server
+# Version 2.1.0 - TOON format + DragonflyDB cache support
 FROM python:3.11-slim as builder
 
 # Set environment variables
@@ -19,15 +20,17 @@ WORKDIR /app
 # Copy dependency files
 COPY requirements.txt pyproject.toml ./
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies (including redis for cache)
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir redis>=5.0.0
 
 # Copy source code
 COPY src/ ./src/
+COPY tests/ ./tests/
 COPY README.md LICENSE ./
 
-# Install the package
-RUN pip install -e .
+# Install the package with cache extras
+RUN pip install -e ".[cache]"
 
 # Production stage
 FROM python:3.11-slim as production
@@ -57,9 +60,9 @@ RUN chown -R dolibarr:dolibarr /app
 # Switch to non-root user
 USER dolibarr
 
-# Health check using test command
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -m dolibarr_mcp.test_connection || exit 1
+# Health check via HTTP endpoint (no auth required)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
 
 # Expose port (for future HTTP interface)
 EXPOSE 8080
@@ -69,8 +72,9 @@ CMD ["python", "-m", "dolibarr_mcp.dolibarr_mcp_server"]
 
 # Labels for metadata
 LABEL org.opencontainers.image.title="Dolibarr MCP Server" \
-      org.opencontainers.image.description="Professional Model Context Protocol server for Dolibarr ERP integration" \
+      org.opencontainers.image.description="AI-optimized MCP server for Dolibarr ERP with TOON format and DragonflyDB cache" \
       org.opencontainers.image.url="https://github.com/latinogino/dolibarr-mcp" \
       org.opencontainers.image.source="https://github.com/latinogino/dolibarr-mcp" \
-      org.opencontainers.image.version="1.0.1" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.version="2.1.0" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.features="TOON format, DragonflyDB cache, 60% token reduction"

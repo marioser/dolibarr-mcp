@@ -16,7 +16,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from dolibarr_mcp import DolibarrClient, Config
-from dolibarr_mcp.dolibarr_client import DolibarrValidationError
+from dolibarr_mcp.client.exceptions import DolibarrValidationError
 
 
 class TestCRUDOperations:
@@ -330,12 +330,12 @@ class TestCRUDOperations:
             mock_request.side_effect = Exception("404 Not Found")
             with pytest.raises(Exception, match="404"):
                 await client.get_customer_by_id(999)
-            
-            # Test validation error
-            mock_request.side_effect = Exception("Validation Error: Missing required field")
+
+            # Test validation error - client validates before request
+            # So we don't mock the request, we just pass invalid data
             with pytest.raises(DolibarrValidationError):
-                await client.create_product({})
-            
+                await client.create_product({})  # Missing required fields
+
             # Test connection error
             mock_request.side_effect = Exception("Connection refused")
             with pytest.raises(Exception, match="Connection"):

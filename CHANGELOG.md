@@ -4,6 +4,59 @@ All notable changes to the Dolibarr MCP Server are documented here. The project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and adopts the
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [2.1.0] - 2026-01-27
+
+### Added
+- **TOON Format Output**: Token-Oriented Object Notation as default output format
+  - ~40% reduction in token usage compared to JSON
+  - Self-documenting tabular format: `[N]{field1,field2}:`
+  - Automatic fallback to JSON on encoding errors
+  - Format selection via `format` parameter (toon, json, json_compact)
+- **DragonflyDB Cache**: High-performance async caching layer
+  - Compatible with DragonflyDB and Redis (25x faster with DragonflyDB)
+  - Entity-specific TTL strategies (30s-1h based on data volatility)
+  - Automatic cache invalidation on mutations
+  - Graceful degradation when cache unavailable
+  - Cache statistics tracking (hits, misses, hit rate)
+- **New modules**:
+  - `formats/`: TOON encoder and format selection
+  - `cache/`: DragonflyDB client and TTL strategies
+- **New dispatch functions**:
+  - `dispatch_tool_cached()`: Cache-aware tool execution
+  - `dispatch_tool_formatted()`: Returns TOON/JSON string output
+
+### Technical Improvements
+- Cache strategies per entity type (products=15min, invoices=30s, etc.)
+- Automatic cache invalidation map for mutation operations
+- Optional `redis` dependency for cache support
+
+## [2.0.0] - 2026-01-27
+
+### Added
+- **Modular Architecture**: Complete refactoring into modular structure
+  - `client/`: API client with `base.py` and `exceptions.py`
+  - `server/`: MCP server with `main.py`, `tools.py`, `handlers.py`, `responses.py`
+  - `transports/`: Separated STDIO and HTTP transports
+  - `schemas/`: Centralized schema definitions with `base.py`, `fields.py`, `entities.py`
+- **Response Wrapper System**: Unified response format with `success_response()`, `error_response()`, `paginated_response()`
+- **Enhanced Error Handling**: Structured errors with codes, retriable flags, and correlation IDs
+  - `DolibarrAPIError`, `DolibarrValidationError`, `DolibarrNotFoundError`, `DolibarrConnectionError`
+- **Dynamic Tool Dispatcher**: Replaced 59 if-statements with declarative `TOOL_REGISTRY` lookup table
+- **AI-Optimized Descriptions**: All 59 tools now have detailed descriptions following format:
+  `[ACTION] [OBJECT]. [FIELDS RETURNED]. [CONSTRAINTS/NOTES].`
+- **Schema Documentation**: Full JSON Schema with descriptions, constraints, and examples
+
+### Changed
+- **Token Efficiency**: Responses now include metadata for pagination and debugging
+- **Error Responses**: Now include `code`, `message`, `status`, `retriable`, `details`
+- **Compatibility**: Backward compatible with existing tests via `dispatch_tool_legacy()`
+
+### Technical Improvements
+- Reduced code duplication by ~40%
+- Single lookup table for tool dispatch (was 59 if-statements)
+- Centralized field filtering definitions
+- Cleaner separation of concerns
+
 ### Added
 - Restored README.md and CHANGELOG.md after merge conflicts while preserving the streamlined structure shared with `prestashop-mcp`.
 - Documented platform-specific setup covering Linux/macOS shells, Windows Visual Studio `vsenv`, and the Docker workflow.

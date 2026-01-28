@@ -1,0 +1,120 @@
+# =============================================================================
+# Dolibarr MCP Server - Production Docker Compose
+# Version 2.1.0
+# =============================================================================
+# Uses pre-built image from Docker Hub
+# For local development with build, use docker-compose.yml instead
+#
+# Usage:
+#   docker-compose -f docker-compose.prod.yml up -d
+#
+# Requirements:
+#   - Copy .env.example to .env and configure
+#   - Set MCP_API_KEY for authentication
+# =============================================================================
+
+services:
+  # =============================================================================
+  # DragonflyDB Cache - High-performance Redis-compatible cache
+  # =============================================================================
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    container_name: dolibarr-mcp-cache
+    restart: unless-stopped
+    volumes:
+      - dragonfly-data:/data
+    command: >
+      --maxmemory=256mb
+      --proactor_threads=2
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 300M
+    networks:
+      - dolibarr-mcp-network
+
+  # =============================================================================
+  # Dolibarr MCP Server - Pre-built image from Docker Hub
+  # =============================================================================
+  dolibarr-mcp:
+    # Use pre-built image from Docker Hub
+    # Replace with your Docker Hub username/repo
+    image: ${DOCKERHUB_IMAGE:-miometrix/dolibarr-mcp:2.1.0}
+    container_name: dolibarr-mcp-server
+    restart: unless-stopped
+    depends_on:
+      dragonfly:
+        condition: service_healthy
+    environment:
+      # Dolibarr API Configuration
+      - DOLIBARR_URL=${DOLIBARR_URL}
+      - DOLIBARR_API_KEY=${DOLIBARR_API_KEY}
+
+      # Cache Configuration (DragonflyDB)
+      - CACHE_ENABLED=${CACHE_ENABLED:-true}
+      - DRAGONFLY_HOST=dragonfly
+      - DRAGONFLY_PORT=6379
+      - DRAGONFLY_PASSWORD=${DRAGONFLY_PASSWORD:-}
+
+      # Output Format Configuration
+      - OUTPUT_FORMAT=${OUTPUT_FORMAT:-toon}
+
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PYTHONUNBUFFERED=1
+
+      # MCP Server Configuration
+      - MCP_TRANSPORT=http
+      - MCP_HTTP_PORT=8080
+      - MCP_HTTP_HOST=0.0.0.0
+      - MCP_SERVER_NAME=dolibarr-mcp
+      - MCP_SERVER_VERSION=2.1.0
+
+      # MCP Authentication (API Key)
+      - MCP_AUTH_ENABLED=${MCP_AUTH_ENABLED:-true}
+      - MCP_API_KEY=${MCP_API_KEY}
+      - MCP_API_KEYS=${MCP_API_KEYS:-}
+
+    ports:
+      - "${MCP_EXTERNAL_PORT:-18004}:8080"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - dolibarr-mcp-network
+
+volumes:
+  dragonfly-data:
+    name: dolibarr-mcp-cache-data
+
+networks:
+  dolibarr-mcp-network:
+    driver: bridge
+    name: dolibarr-mcp-net

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dolibarr-mcp"
-version = "1.1.0"
-description = "Professional Model Context Protocol server for complete Dolibarr ERP/CRM management"
+version = "2.1.0"
+description = "Optimized Model Context Protocol server for Dolibarr ERP/CRM - Universal AI agent compatible"
 readme = "README.md"
 requires-python = ">=3.8"
 authors = [
@@ -43,10 +43,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+cache = [
+    "redis>=5.0.0",  # For DragonflyDB/Redis cache support
+]
 dev = [
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.1.0",
+    "redis>=5.0.0",
 ]
 
 [project.urls]
@@ -57,6 +61,7 @@ dev = [
 
 [project.scripts]
 dolibarr-mcp = "dolibarr_mcp.cli:main"
+dolibarr-mcp-server = "dolibarr_mcp.server.main:run"
 
 [tool.setuptools.packages.find]
 where = ["src"]

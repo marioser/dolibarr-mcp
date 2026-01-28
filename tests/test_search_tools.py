@@ -9,21 +9,21 @@ async def test_search_products_by_ref():
     with patch("dolibarr_mcp.dolibarr_mcp_server.DolibarrClient") as MockClient:
         mock_instance = MockClient.return_value
         mock_instance.__aenter__.return_value = mock_instance
-        
+
         # Mock search_products response
         mock_instance.search_products = AsyncMock(return_value=[
             {"id": 1, "ref": "PRJ-123", "label": "Project 123"}
         ])
-        
+
         # Call the tool
         result = await handle_call_tool("search_products_by_ref", {"ref_prefix": "PRJ"})
-        
-        # Verify the call
+
+        # Verify the call - search_products is called with positional args (sqlfilter, limit)
         mock_instance.search_products.assert_called_once()
         call_args = mock_instance.search_products.call_args
-        assert "sqlfilters" in call_args.kwargs
-        assert call_args.kwargs["sqlfilters"] == "(t.ref:like:'PRJ%')"
-        
+        # The SQL filter is passed as first positional argument
+        assert "(t.ref:like:'PRJ%')" in call_args.args[0]
+
         # Verify result
         assert "PRJ-123" in result[0].text
 
@@ -66,14 +66,15 @@ async def test_search_customers():
     with patch("dolibarr_mcp.dolibarr_mcp_server.DolibarrClient") as MockClient:
         mock_instance = MockClient.return_value
         mock_instance.__aenter__.return_value = mock_instance
-        
+
         mock_instance.search_customers = AsyncMock(return_value=[
             {"id": 1, "nom": "Acme Corp"}
         ])
-        
+
         result = await handle_call_tool("search_customers", {"query": "Acme"})
-        
+
+        # Verify the call - search_customers is called with positional args (sqlfilter, limit)
         mock_instance.search_customers.assert_called_once()
         call_args = mock_instance.search_customers.call_args
-        assert "sqlfilters" in call_args.kwargs
-        assert "Acme" in call_args.kwargs["sqlfilters"]
+        # The SQL filter is passed as first positional argument
+        assert "Acme" in call_args.args[0]
