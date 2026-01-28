@@ -26,6 +26,9 @@ class CacheStrategy(Enum):
     # Very long TTL for static reference data
     STATIC = 3600  # 1 hour
 
+    # Extended TTL for rarely changing data
+    EXTENDED = 1800  # 30 minutes
+
 
 # Entity-specific cache strategies
 ENTITY_STRATEGIES: Dict[str, CacheStrategy] = {
@@ -33,12 +36,12 @@ ENTITY_STRATEGIES: Dict[str, CacheStrategy] = {
     "test_connection": CacheStrategy.SHORT,
     "get_status": CacheStrategy.SHORT,
 
-    # Products - relatively static, cache longer
-    "get_products": CacheStrategy.LONG,
-    "get_product_by_id": CacheStrategy.LONG,
-    "search_products_by_ref": CacheStrategy.MEDIUM,
-    "search_products_by_label": CacheStrategy.MEDIUM,
-    "resolve_product_ref": CacheStrategy.MEDIUM,
+    # Products - relatively static, cache 30 min
+    "get_products": CacheStrategy.EXTENDED,
+    "get_product_by_id": CacheStrategy.EXTENDED,
+    "search_products_by_ref": CacheStrategy.LONG,
+    "search_products_by_label": CacheStrategy.LONG,
+    "resolve_product_ref": CacheStrategy.LONG,
 
     # Customers - semi-static
     "get_customers": CacheStrategy.MEDIUM,
@@ -53,10 +56,10 @@ ENTITY_STRATEGIES: Dict[str, CacheStrategy] = {
     "get_contacts": CacheStrategy.MEDIUM,
     "get_contact_by_id": CacheStrategy.MEDIUM,
 
-    # Projects - medium cache
-    "get_projects": CacheStrategy.MEDIUM,
-    "get_project_by_id": CacheStrategy.MEDIUM,
-    "search_projects": CacheStrategy.MEDIUM,
+    # Projects - long cache (15 min)
+    "get_projects": CacheStrategy.LONG,
+    "get_project_by_id": CacheStrategy.LONG,
+    "search_projects": CacheStrategy.LONG,
 
     # Invoices - medium cache (5 min)
     "get_invoices": CacheStrategy.MEDIUM,
