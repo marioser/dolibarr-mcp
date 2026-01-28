@@ -337,8 +337,24 @@ async def handle_list_tools():
                  "note_private": {"type": "string"},
                  "lines": {"type": "array", "items": {"type": "object", "properties": {"desc": {"type": "string"}, "qty": {"type": "number"}, "subprice": {"type": "number"}, "product_id": {"type": "integer"}, "product_type": {"type": "integer"}, "tva_tx": {"type": "number"}, "remise_percent": {"type": "number"}}, "required": ["desc", "qty", "subprice"]}}
              }, "required": ["customer_id"], "additionalProperties": False}),
-        Tool(name="update_proposal", description="Update draft proposal",
-             inputSchema={"type": "object", "properties": {"proposal_id": {"type": "integer"}, "duree_validite": {"type": "integer"}, "note_public": {"type": "string"}, "note_private": {"type": "string"}}, "required": ["proposal_id"], "additionalProperties": False}),
+        Tool(name="update_proposal",
+             description="Update proposal fields. Use duree_validite to change validity period (fin_validite is auto-calculated). Use note_private for internal comments.",
+             inputSchema={"type": "object", "properties": {
+                 "proposal_id": {"type": "integer", "description": "Proposal ID (required)"},
+                 "duree_validite": {"type": "integer", "description": "Validity duration in days (auto-calculates fin_validite)"},
+                 "note_public": {"type": "string", "description": "Public notes (visible to customer)"},
+                 "note_private": {"type": "string", "description": "Private notes (internal only)"},
+                 "ref_client": {"type": "string", "description": "Customer reference number"},
+                 "fk_project": {"type": "integer", "description": "Link to project ID"}
+             }, "required": ["proposal_id"], "additionalProperties": False}),
+        Tool(name="append_proposal_note",
+             description="Add a timestamped note to a proposal WITHOUT overwriting existing notes. Perfect for tracking comments, follow-ups, and conversation history.",
+             inputSchema={"type": "object", "properties": {
+                 "proposal_id": {"type": "integer", "description": "Proposal ID (required)"},
+                 "note": {"type": "string", "description": "Note text to append"},
+                 "note_type": {"type": "string", "enum": ["private", "public"], "default": "private", "description": "private=internal, public=visible to customer"},
+                 "add_timestamp": {"type": "boolean", "default": True, "description": "Add timestamp prefix [YYYY-MM-DD HH:MM]"}
+             }, "required": ["proposal_id", "note"], "additionalProperties": False}),
         Tool(name="delete_proposal", description="Delete proposal", inputSchema=_id_schema("proposal_id")),
         Tool(name="add_proposal_line", description="Add line to proposal", inputSchema=_line_schema("proposal")),
         Tool(name="update_proposal_line", description="Update proposal line",
@@ -689,6 +705,13 @@ async def _dispatch_tool(client: DolibarrClient, name: str, args: dict) -> Any:
     if name == "update_proposal":
         pid = args.pop("proposal_id")
         return await client.update_proposal(pid, **args)
+    if name == "append_proposal_note":
+        return await client.append_proposal_note(
+            proposal_id=args["proposal_id"],
+            note=args["note"],
+            note_type=args.get("note_type", "private"),
+            add_timestamp=args.get("add_timestamp", True),
+        )
     if name == "delete_proposal":
         return await client.delete_proposal(args["proposal_id"])
     if name == "add_proposal_line":

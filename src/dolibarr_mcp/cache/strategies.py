@@ -102,6 +102,7 @@ ENTITY_STRATEGIES: Dict[str, CacheStrategy] = {
     "delete_project": CacheStrategy.NO_CACHE,
     "create_proposal": CacheStrategy.NO_CACHE,
     "update_proposal": CacheStrategy.NO_CACHE,
+    "append_proposal_note": CacheStrategy.NO_CACHE,
     "delete_proposal": CacheStrategy.NO_CACHE,
     "add_proposal_line": CacheStrategy.NO_CACHE,
     "update_proposal_line": CacheStrategy.NO_CACHE,
@@ -139,6 +140,7 @@ INVALIDATION_MAP: Dict[str, list] = {
     # Proposal mutations
     "create_proposal": ["get_proposals", "get_customer_proposals", "search_proposals"],
     "update_proposal": ["get_proposals", "get_customer_proposals", "get_proposal_by_id", "search_proposals"],
+    "append_proposal_note": ["get_proposal_by_id"],
     "delete_proposal": ["get_proposals", "get_customer_proposals", "get_proposal_by_id", "search_proposals"],
     "add_proposal_line": ["get_proposal_by_id"],
     "update_proposal_line": ["get_proposal_by_id"],

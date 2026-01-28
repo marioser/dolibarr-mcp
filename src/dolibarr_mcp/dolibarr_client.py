@@ -1215,9 +1215,61 @@ class DolibarrClient:
         return self._extract_identifier(result)
 
     async def update_proposal(self, proposal_id: int, data: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
-        """Update an existing proposal."""
+        """Update an existing proposal.
+
+        Supported fields:
+            - note_private: Private notes (internal)
+            - note_public: Public notes (visible to customer)
+            - duree_validite: Validity duration in days (recalculates fin_validite)
+            - ref_client: Customer reference
+            - date/datep: Proposal date (timestamp)
+            - cond_reglement_id: Payment terms ID
+            - mode_reglement_id: Payment mode ID
+            - fk_project: Link to project ID
+
+        Note: fin_validite is auto-calculated from datep + duree_validite
+        """
         payload = self._merge_payload(data, **kwargs)
         return await self.request("PUT", f"proposals/{proposal_id}", data=payload)
+
+    async def append_proposal_note(
+        self,
+        proposal_id: int,
+        note: str,
+        note_type: str = "private",
+        add_timestamp: bool = True,
+    ) -> Dict[str, Any]:
+        """Append a note to proposal without overwriting existing notes.
+
+        Args:
+            proposal_id: Proposal ID
+            note: Text to append
+            note_type: 'private' or 'public'
+            add_timestamp: Add timestamp prefix to note
+
+        Returns:
+            Updated proposal
+        """
+        # Get current proposal to read existing notes
+        current = await self.get_proposal_by_id(proposal_id)
+
+        field = "note_private" if note_type == "private" else "note_public"
+        existing = current.get(field) or ""
+
+        # Build new note with optional timestamp
+        if add_timestamp:
+            timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+            new_note = f"[{timestamp}] {note}"
+        else:
+            new_note = note
+
+        # Append to existing notes
+        if existing:
+            updated_note = f"{existing}\n\n{new_note}"
+        else:
+            updated_note = new_note
+
+        return await self.update_proposal(proposal_id, **{field: updated_note})
 
     async def delete_proposal(self, proposal_id: int) -> Dict[str, Any]:
         """Delete a proposal."""
