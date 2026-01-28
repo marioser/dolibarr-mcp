@@ -63,14 +63,17 @@ ENTITY_STRATEGIES: Dict[str, CacheStrategy] = {
 
     # Invoices - medium cache (5 min)
     "get_invoices": CacheStrategy.MEDIUM,
+    "get_customer_invoices": CacheStrategy.MEDIUM,
     "get_invoice_by_id": CacheStrategy.MEDIUM,
 
     # Orders - medium cache (5 min)
     "get_orders": CacheStrategy.MEDIUM,
+    "get_customer_orders": CacheStrategy.MEDIUM,
     "get_order_by_id": CacheStrategy.MEDIUM,
 
     # Proposals - medium cache (5 min)
     "get_proposals": CacheStrategy.MEDIUM,
+    "get_customer_proposals": CacheStrategy.MEDIUM,
     "get_proposal_by_id": CacheStrategy.MEDIUM,
     "search_proposals": CacheStrategy.MEDIUM,
 
@@ -125,24 +128,24 @@ INVALIDATION_MAP: Dict[str, list] = {
     "delete_product": ["get_products", "get_product_by_id", "search_products_by_ref", "search_products_by_label", "resolve_product_ref"],
 
     # Invoice mutations
-    "create_invoice": ["get_invoices"],
-    "update_invoice": ["get_invoices", "get_invoice_by_id"],
-    "delete_invoice": ["get_invoices", "get_invoice_by_id"],
+    "create_invoice": ["get_invoices", "get_customer_invoices"],
+    "update_invoice": ["get_invoices", "get_customer_invoices", "get_invoice_by_id"],
+    "delete_invoice": ["get_invoices", "get_customer_invoices", "get_invoice_by_id"],
     "add_invoice_line": ["get_invoice_by_id"],
     "update_invoice_line": ["get_invoice_by_id"],
     "delete_invoice_line": ["get_invoice_by_id"],
-    "validate_invoice": ["get_invoices", "get_invoice_by_id"],
+    "validate_invoice": ["get_invoices", "get_customer_invoices", "get_invoice_by_id"],
 
     # Proposal mutations
-    "create_proposal": ["get_proposals", "search_proposals"],
-    "update_proposal": ["get_proposals", "get_proposal_by_id", "search_proposals"],
-    "delete_proposal": ["get_proposals", "get_proposal_by_id", "search_proposals"],
+    "create_proposal": ["get_proposals", "get_customer_proposals", "search_proposals"],
+    "update_proposal": ["get_proposals", "get_customer_proposals", "get_proposal_by_id", "search_proposals"],
+    "delete_proposal": ["get_proposals", "get_customer_proposals", "get_proposal_by_id", "search_proposals"],
     "add_proposal_line": ["get_proposal_by_id"],
     "update_proposal_line": ["get_proposal_by_id"],
     "delete_proposal_line": ["get_proposal_by_id"],
-    "validate_proposal": ["get_proposals", "get_proposal_by_id"],
-    "close_proposal": ["get_proposals", "get_proposal_by_id"],
-    "set_proposal_to_draft": ["get_proposals", "get_proposal_by_id"],
+    "validate_proposal": ["get_proposals", "get_customer_proposals", "get_proposal_by_id"],
+    "close_proposal": ["get_proposals", "get_customer_proposals", "get_proposal_by_id"],
+    "set_proposal_to_draft": ["get_proposals", "get_customer_proposals", "get_proposal_by_id"],
 
     # Project mutations
     "create_project": ["get_projects", "search_projects"],
@@ -160,9 +163,9 @@ INVALIDATION_MAP: Dict[str, list] = {
     "delete_contact": ["get_contacts", "get_contact_by_id"],
 
     # Order mutations
-    "create_order": ["get_orders"],
-    "update_order": ["get_orders", "get_order_by_id"],
-    "delete_order": ["get_orders", "get_order_by_id"],
+    "create_order": ["get_orders", "get_customer_orders"],
+    "update_order": ["get_orders", "get_customer_orders", "get_order_by_id"],
+    "delete_order": ["get_orders", "get_customer_orders", "get_order_by_id"],
 }
 
 

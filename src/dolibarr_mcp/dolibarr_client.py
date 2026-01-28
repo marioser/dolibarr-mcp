@@ -40,11 +40,12 @@ class DolibarrClient:
         self.debug_mode = getattr(config, "debug_mode", False)
         self.allow_ref_autogen = getattr(config, "allow_ref_autogen", False)
         self.ref_autogen_prefix = getattr(config, "ref_autogen_prefix", "AUTO")
-        self.max_retries = getattr(config, "max_retries", 2)
-        self.retry_backoff_seconds = getattr(config, "retry_backoff_seconds", 0.5)
-        
-        # Configure timeout
-        self.timeout = ClientTimeout(total=30, connect=10)
+        self.max_retries = getattr(config, "max_retries", 3)
+        self.retry_backoff_seconds = getattr(config, "retry_backoff_seconds", 1.0)
+        request_timeout = getattr(config, "request_timeout", 60)
+
+        # Configure timeout (increased for heavy list queries)
+        self.timeout = ClientTimeout(total=request_timeout, connect=15)
         self.logger.setLevel(config.log_level)
     
     async def __aenter__(self):
@@ -253,53 +254,56 @@ class DolibarrClient:
         return payload
 
     async def _make_request(
-        self, 
-        method: str, 
-        endpoint: str, 
+        self,
+        method: str,
+        endpoint: str,
         params: Optional[Dict] = None,
         data: Optional[Dict] = None
     ) -> Dict[str, Any]:
-        """Make HTTP request to Dolibarr API."""
+        """Make HTTP request to Dolibarr API with automatic retry for 5xx errors."""
         if not self.session:
             await self.start_session()
-        
+
         url = self._build_url(endpoint)
-        
+
         last_exception: Optional[Exception] = None
+        retryable_status_codes = {502, 503, 504}
 
         for attempt in range(self.max_retries + 1):
             try:
                 if self.debug_mode:
                     self.logger.debug(
-                        "Making %s request to %s with params=%s payload_keys=%s api_key=%s",
+                        "Making %s request to %s with params=%s payload_keys=%s api_key=%s (attempt %d/%d)",
                         method,
                         url,
                         params or {},
                         list((data or {}).keys()),
                         self._mask_api_key(),
+                        attempt + 1,
+                        self.max_retries + 1,
                     )
-                
+
                 kwargs = {
                     "params": params or {},
                 }
-                
+
                 if data and method.upper() in ["POST", "PUT"]:
                     kwargs["json"] = data
-                
+
                 async with self.session.request(method, url, **kwargs) as response:
                     response_text = await response.text()
-                    
+
                     # Log response for debugging without leaking secrets
                     if self.debug_mode:
                         self.logger.debug("Response status: %s", response.status)
                         self.logger.debug("Response body (truncated): %s", response_text[:500])
-                    
+
                     # Try to parse JSON response
                     try:
                         response_data = json.loads(response_text) if response_text else {}
                     except json.JSONDecodeError:
                         response_data = {"raw_response": response_text}
-                    
+
                     # Handle error responses
                     if response.status >= 400:
                         if response.status == 400:
@@ -327,6 +331,20 @@ class DolibarrClient:
                                 status_code=400,
                                 response_data=error_data,
                             )
+
+                        # Retry on 5xx errors (502, 503, 504)
+                        if response.status in retryable_status_codes and attempt < self.max_retries:
+                            backoff = self.retry_backoff_seconds * (2 ** attempt)
+                            self.logger.warning(
+                                "Retryable error %s for %s, retrying in %.1fs (attempt %d/%d)",
+                                response.status,
+                                endpoint,
+                                backoff,
+                                attempt + 1,
+                                self.max_retries + 1,
+                            )
+                            await asyncio.sleep(backoff)
+                            continue
 
                         if response.status >= 500:
                             correlation_id = self._generate_correlation_id()
@@ -359,16 +377,16 @@ class DolibarrClient:
                             status_code=response.status,
                             response_data=response_data,
                         )
-                    
+
                     return response_data
-                    
+
             except aiohttp.ClientError as e:
                 last_exception = e
                 if endpoint == "status" and not url.endswith("/api/status"):
                     try:
                         alt_url = f"{self.base_url}/setup/modules"
                         self.logger.debug(f"Status failed, trying alternative: {alt_url}")
-                        
+
                         async with self.session.get(alt_url) as response:
                             if response.status == 200:
                                 return {
@@ -379,7 +397,7 @@ class DolibarrClient:
                     except Exception as alt_exc:  # pylint: disable=broad-except
                         last_exception = alt_exc
 
-                if attempt < self.max_retries and isinstance(e, aiohttp.ClientResponseError) and e.status in {502, 503, 504}:
+                if attempt < self.max_retries and isinstance(e, aiohttp.ClientResponseError) and e.status in retryable_status_codes:
                     backoff = self.retry_backoff_seconds * (2 ** attempt)
                     await asyncio.sleep(backoff)
                     continue
@@ -617,14 +635,92 @@ class DolibarrClient:
     # INVOICE MANAGEMENT
     # ============================================================================
     
-    async def get_invoices(self, limit: int = 100, status: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get list of invoices."""
-        params = {"limit": limit}
+    async def get_invoices(
+        self,
+        limit: int = 100,
+        status: Optional[str] = None,
+        socid: Optional[int] = None,
+        year: Optional[int] = None,
+        month: Optional[int] = None,
+        date_start: Optional[str] = None,
+        date_end: Optional[str] = None,
+        sortfield: str = "t.datef",
+        sortorder: str = "DESC",
+    ) -> List[Dict[str, Any]]:
+        """Get list of invoices with advanced filtering.
+
+        Args:
+            limit: Maximum number of results (default 100)
+            status: Filter by status (draft, unpaid, paid)
+            socid: Filter by customer ID
+            year: Filter by year
+            month: Filter by month (1-12), requires year
+            date_start: Filter by start date (YYYY-MM-DD)
+            date_end: Filter by end date (YYYY-MM-DD)
+            sortfield: Field to sort by (default: t.datef)
+            sortorder: Sort order ASC or DESC (default: DESC)
+        """
+        params: Dict[str, Any] = {
+            "limit": limit,
+            "sortfield": sortfield,
+            "sortorder": sortorder,
+        }
+
         if status:
             params["status"] = status
-        
+
+        filters: List[str] = []
+
+        if socid is not None:
+            filters.append(f"(t.fk_soc:=:{socid})")
+
+        # Year + optional month filter
+        if year is not None:
+            if month is not None and 1 <= month <= 12:
+                import calendar
+                last_day = calendar.monthrange(year, month)[1]
+                filters.append(f"(t.datef:>=:'{year}-{month:02d}-01')")
+                filters.append(f"(t.datef:<=:'{year}-{month:02d}-{last_day:02d}')")
+            else:
+                filters.append(f"(t.datef:>=:'{year}-01-01')")
+                filters.append(f"(t.datef:<=:'{year}-12-31')")
+
+        if date_start is not None:
+            filters.append(f"(t.datef:>=:'{date_start}')")
+
+        if date_end is not None:
+            filters.append(f"(t.datef:<=:'{date_end}')")
+
+        if filters:
+            params["sqlfilters"] = " AND ".join(filters)
+
         result = await self.request("GET", "invoices", params=params)
         return result if isinstance(result, list) else []
+
+    async def get_customer_invoices(
+        self,
+        socid: int,
+        limit: int = 10,
+        status: Optional[str] = None,
+        year: Optional[int] = None,
+        month: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get invoices for a specific customer.
+
+        Args:
+            socid: Customer ID (required)
+            limit: Maximum number of results (default 10)
+            status: Filter by status (draft, unpaid, paid)
+            year: Filter by year
+            month: Filter by month (1-12), requires year
+        """
+        return await self.get_invoices(
+            limit=limit,
+            status=status,
+            socid=socid,
+            year=year,
+            month=month,
+        )
     
     async def get_invoice_by_id(self, invoice_id: int) -> Dict[str, Any]:
         """Get specific invoice by ID."""
@@ -716,14 +812,92 @@ class DolibarrClient:
     # ORDER MANAGEMENT
     # ============================================================================
     
-    async def get_orders(self, limit: int = 100, status: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get list of orders."""
-        params = {"limit": limit}
+    async def get_orders(
+        self,
+        limit: int = 100,
+        status: Optional[str] = None,
+        socid: Optional[int] = None,
+        year: Optional[int] = None,
+        month: Optional[int] = None,
+        date_start: Optional[str] = None,
+        date_end: Optional[str] = None,
+        sortfield: str = "t.date_commande",
+        sortorder: str = "DESC",
+    ) -> List[Dict[str, Any]]:
+        """Get list of orders with advanced filtering.
+
+        Args:
+            limit: Maximum number of results (default 100)
+            status: Filter by status
+            socid: Filter by customer ID
+            year: Filter by year
+            month: Filter by month (1-12), requires year
+            date_start: Filter by start date (YYYY-MM-DD)
+            date_end: Filter by end date (YYYY-MM-DD)
+            sortfield: Field to sort by (default: t.date_commande)
+            sortorder: Sort order ASC or DESC (default: DESC)
+        """
+        params: Dict[str, Any] = {
+            "limit": limit,
+            "sortfield": sortfield,
+            "sortorder": sortorder,
+        }
+
         if status:
             params["status"] = status
-        
+
+        filters: List[str] = []
+
+        if socid is not None:
+            filters.append(f"(t.fk_soc:=:{socid})")
+
+        # Year + optional month filter
+        if year is not None:
+            if month is not None and 1 <= month <= 12:
+                import calendar
+                last_day = calendar.monthrange(year, month)[1]
+                filters.append(f"(t.date_commande:>=:'{year}-{month:02d}-01')")
+                filters.append(f"(t.date_commande:<=:'{year}-{month:02d}-{last_day:02d}')")
+            else:
+                filters.append(f"(t.date_commande:>=:'{year}-01-01')")
+                filters.append(f"(t.date_commande:<=:'{year}-12-31')")
+
+        if date_start is not None:
+            filters.append(f"(t.date_commande:>=:'{date_start}')")
+
+        if date_end is not None:
+            filters.append(f"(t.date_commande:<=:'{date_end}')")
+
+        if filters:
+            params["sqlfilters"] = " AND ".join(filters)
+
         result = await self.request("GET", "orders", params=params)
         return result if isinstance(result, list) else []
+
+    async def get_customer_orders(
+        self,
+        socid: int,
+        limit: int = 10,
+        status: Optional[str] = None,
+        year: Optional[int] = None,
+        month: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get orders for a specific customer.
+
+        Args:
+            socid: Customer ID (required)
+            limit: Maximum number of results (default 10)
+            status: Filter by status
+            year: Filter by year
+            month: Filter by month (1-12), requires year
+        """
+        return await self.get_orders(
+            limit=limit,
+            status=status,
+            socid=socid,
+            year=year,
+            month=month,
+        )
     
     async def get_order_by_id(self, order_id: int) -> Dict[str, Any]:
         """Get specific order by ID."""
@@ -839,11 +1013,155 @@ class DolibarrClient:
     # PROPOSAL MANAGEMENT
     # ============================================================================
 
-    async def get_proposals(self, limit: int = 100, status: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Get list of proposals/quotes."""
-        params: Dict[str, Any] = {"limit": limit}
+    async def get_proposals(
+        self,
+        limit: int = 100,
+        status: Optional[int] = None,
+        socid: Optional[int] = None,
+        year: Optional[int] = None,
+        month: Optional[int] = None,
+        date_start: Optional[str] = None,
+        date_end: Optional[str] = None,
+        sortfield: str = "t.datep",
+        sortorder: str = "DESC",
+    ) -> List[Dict[str, Any]]:
+        """Get list of proposals/quotes with advanced filtering.
+
+        Args:
+            limit: Maximum number of results (default 100)
+            status: Filter by status (0=draft, 1=validated, 2=signed, 3=refused)
+            socid: Filter by customer ID
+            year: Filter by year (e.g., 2026)
+            month: Filter by month (1-12), requires year
+            date_start: Filter by start date (YYYY-MM-DD)
+            date_end: Filter by end date (YYYY-MM-DD)
+            sortfield: Field to sort by (default: t.datep)
+            sortorder: Sort order ASC or DESC (default: DESC)
+        """
+        params: Dict[str, Any] = {
+            "limit": limit,
+            "sortfield": sortfield,
+            "sortorder": sortorder,
+        }
+
+        # Build SQL filters
+        filters: List[str] = []
+
         if status is not None:
             params["status"] = status
+
+        if socid is not None:
+            filters.append(f"(t.fk_soc:=:{socid})")
+
+        # Year + optional month filter
+        if year is not None:
+            if month is not None and 1 <= month <= 12:
+                # Filter by specific month
+                import calendar
+                last_day = calendar.monthrange(year, month)[1]
+                filters.append(f"(t.datep:>=:'{year}-{month:02d}-01')")
+                filters.append(f"(t.datep:<=:'{year}-{month:02d}-{last_day:02d}')")
+            else:
+                # Filter by full year
+                filters.append(f"(t.datep:>=:'{year}-01-01')")
+                filters.append(f"(t.datep:<=:'{year}-12-31')")
+
+        if date_start is not None:
+            filters.append(f"(t.datep:>=:'{date_start}')")
+
+        if date_end is not None:
+            filters.append(f"(t.datep:<=:'{date_end}')")
+
+        if filters:
+            params["sqlfilters"] = " AND ".join(filters)
+
+        result = await self.request("GET", "proposals", params=params)
+        return result if isinstance(result, list) else []
+
+    async def get_customer_proposals(
+        self,
+        socid: int,
+        limit: int = 10,
+        status: Optional[int] = None,
+        statuses: Optional[List[int]] = None,
+        year: Optional[int] = None,
+        month: Optional[int] = None,
+        include_draft: bool = False,
+        include_validated: bool = False,
+        include_signed: bool = False,
+        include_refused: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Get proposals for a specific customer with smart filtering.
+
+        This is a convenience method optimized for the common use case of
+        "get latest N proposals for customer X".
+
+        Status codes:
+            0 = draft (borrador)
+            1 = validated (validada/abierta)
+            2 = signed (firmada/ganada)
+            3 = refused (rechazada/perdida)
+
+        Args:
+            socid: Customer ID (required)
+            limit: Maximum number of results (default 10)
+            status: Filter by single specific status (takes precedence)
+            statuses: Filter by multiple statuses [0,1,2,3]
+            year: Filter by year
+            month: Filter by month (1-12), requires year
+            include_draft: Include draft proposals (status=0)
+            include_validated: Include validated/open proposals (status=1)
+            include_signed: Include signed/won proposals (status=2)
+            include_refused: Include refused/lost proposals (status=3)
+
+        Note: If no status filters are specified, returns ALL statuses.
+        """
+        params: Dict[str, Any] = {
+            "limit": limit,
+            "sortfield": "t.datep",
+            "sortorder": "DESC",
+        }
+
+        filters: List[str] = [f"(t.fk_soc:=:{socid})"]
+
+        # Build status filter
+        if status is not None:
+            # Single explicit status takes precedence
+            filters.append(f"(t.fk_statut:=:{status})")
+        elif statuses is not None and len(statuses) > 0:
+            # Multiple statuses provided as list
+            status_conditions = [f"(t.fk_statut:=:{s})" for s in statuses]
+            filters.append(f"({' OR '.join(status_conditions)})")
+        else:
+            # Check include_* flags
+            selected_statuses: List[int] = []
+            if include_draft:
+                selected_statuses.append(0)
+            if include_validated:
+                selected_statuses.append(1)
+            if include_signed:
+                selected_statuses.append(2)
+            if include_refused:
+                selected_statuses.append(3)
+
+            if selected_statuses:
+                status_conditions = [f"(t.fk_statut:=:{s})" for s in selected_statuses]
+                filters.append(f"({' OR '.join(status_conditions)})")
+            # If no status filters specified, return ALL statuses (no filter added)
+
+        # Year + optional month filter
+        if year is not None:
+            if month is not None and 1 <= month <= 12:
+                import calendar
+                last_day = calendar.monthrange(year, month)[1]
+                filters.append(f"(t.datep:>=:'{year}-{month:02d}-01')")
+                filters.append(f"(t.datep:<=:'{year}-{month:02d}-{last_day:02d}')")
+            else:
+                filters.append(f"(t.datep:>=:'{year}-01-01')")
+                filters.append(f"(t.datep:<=:'{year}-12-31')")
+
+        params["sqlfilters"] = " AND ".join(filters)
+
         result = await self.request("GET", "proposals", params=params)
         return result if isinstance(result, list) else []
 
@@ -851,9 +1169,27 @@ class DolibarrClient:
         """Get specific proposal by ID."""
         return await self.request("GET", f"proposals/{proposal_id}")
 
-    async def search_proposals(self, sqlfilters: str, limit: int = 20) -> List[Dict[str, Any]]:
-        """Search proposals using SQL filters."""
-        params = {"limit": limit, "sqlfilters": sqlfilters}
+    async def search_proposals(
+        self,
+        sqlfilters: str,
+        limit: int = 20,
+        sortfield: str = "t.datep",
+        sortorder: str = "DESC",
+    ) -> List[Dict[str, Any]]:
+        """Search proposals using SQL filters.
+
+        Args:
+            sqlfilters: SQL filter expression
+            limit: Maximum results (default 20)
+            sortfield: Field to sort by (default: t.datep)
+            sortorder: Sort order ASC or DESC (default: DESC)
+        """
+        params = {
+            "limit": limit,
+            "sqlfilters": sqlfilters,
+            "sortfield": sortfield,
+            "sortorder": sortorder,
+        }
         result = await self.request("GET", "proposals", params=params)
         return result if isinstance(result, list) else []
 

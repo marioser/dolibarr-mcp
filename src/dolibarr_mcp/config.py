@@ -69,13 +69,18 @@ class Config(BaseSettings):
     )
 
     max_retries: int = Field(
-        description="Maximum retries for transient HTTP errors",
-        default=2,
+        description="Maximum retries for transient HTTP errors (502, 503, 504)",
+        default=3,
     )
 
     retry_backoff_seconds: float = Field(
-        description="Base backoff (seconds) for retry strategy",
-        default=0.5,
+        description="Base backoff (seconds) for retry strategy with exponential backoff",
+        default=1.0,
+    )
+
+    request_timeout: int = Field(
+        description="Request timeout in seconds",
+        default=60,
     )
 
     @field_validator("dolibarr_url")

@@ -200,7 +200,25 @@ async def handle_list_tools():
         Tool(name="delete_product", description="Delete product", inputSchema=_id_schema("product_id")),
 
         # Invoices
-        Tool(name="get_invoices", description="List invoices. Status: draft, unpaid, paid", inputSchema=_list_schema(with_status=True)),
+        Tool(name="get_invoices", description="List invoices with filters. Status: draft, unpaid, paid",
+             inputSchema={"type": "object", "properties": {
+                 "limit": {"type": "integer", "default": 50, "description": "Max results (default 50)"},
+                 "status": {"type": "string", "description": "Filter by status: draft, unpaid, paid"},
+                 "socid": {"type": "integer", "description": "Filter by customer ID"},
+                 "year": {"type": "integer", "description": "Filter by year (e.g., 2026)"},
+                 "month": {"type": "integer", "minimum": 1, "maximum": 12, "description": "Filter by month (1-12), requires year"},
+                 "date_start": {"type": "string", "description": "Filter from date (YYYY-MM-DD)"},
+                 "date_end": {"type": "string", "description": "Filter to date (YYYY-MM-DD)"},
+                 "sortorder": {"type": "string", "enum": ["ASC", "DESC"], "default": "DESC"}
+             }, "additionalProperties": False}),
+        Tool(name="get_customer_invoices", description="Get latest invoices for a customer",
+             inputSchema={"type": "object", "properties": {
+                 "socid": {"type": "integer", "description": "Customer ID (required)"},
+                 "limit": {"type": "integer", "default": 10, "description": "Max results (default 10)"},
+                 "status": {"type": "string", "description": "Filter by status: draft, unpaid, paid"},
+                 "year": {"type": "integer", "description": "Filter by year (e.g., 2026)"},
+                 "month": {"type": "integer", "minimum": 1, "maximum": 12, "description": "Filter by month (1-12), requires year"}
+             }, "required": ["socid"], "additionalProperties": False}),
         Tool(name="get_invoice_by_id", description="Get invoice by ID", inputSchema=_id_schema("invoice_id")),
         Tool(name="create_invoice", description="Create invoice with lines",
              inputSchema={"type": "object", "properties": {
@@ -221,7 +239,25 @@ async def handle_list_tools():
              inputSchema={"type": "object", "properties": {"invoice_id": {"type": "integer"}, "warehouse_id": {"type": "integer", "default": 0}}, "required": ["invoice_id"], "additionalProperties": False}),
 
         # Orders
-        Tool(name="get_orders", description="List orders", inputSchema=_list_schema(with_status=True)),
+        Tool(name="get_orders", description="List orders with filters",
+             inputSchema={"type": "object", "properties": {
+                 "limit": {"type": "integer", "default": 50, "description": "Max results (default 50)"},
+                 "status": {"type": "string", "description": "Filter by status"},
+                 "socid": {"type": "integer", "description": "Filter by customer ID"},
+                 "year": {"type": "integer", "description": "Filter by year (e.g., 2026)"},
+                 "month": {"type": "integer", "minimum": 1, "maximum": 12, "description": "Filter by month (1-12), requires year"},
+                 "date_start": {"type": "string", "description": "Filter from date (YYYY-MM-DD)"},
+                 "date_end": {"type": "string", "description": "Filter to date (YYYY-MM-DD)"},
+                 "sortorder": {"type": "string", "enum": ["ASC", "DESC"], "default": "DESC"}
+             }, "additionalProperties": False}),
+        Tool(name="get_customer_orders", description="Get latest orders for a customer",
+             inputSchema={"type": "object", "properties": {
+                 "socid": {"type": "integer", "description": "Customer ID (required)"},
+                 "limit": {"type": "integer", "default": 10, "description": "Max results (default 10)"},
+                 "status": {"type": "string", "description": "Filter by status"},
+                 "year": {"type": "integer", "description": "Filter by year (e.g., 2026)"},
+                 "month": {"type": "integer", "minimum": 1, "maximum": 12, "description": "Filter by month (1-12), requires year"}
+             }, "required": ["socid"], "additionalProperties": False}),
         Tool(name="get_order_by_id", description="Get order by ID", inputSchema=_id_schema("order_id")),
         Tool(name="create_order", description="Create order",
              inputSchema={"type": "object", "properties": {"customer_id": {"type": "integer"}, "date": {"type": "string"}}, "required": ["customer_id"], "additionalProperties": False}),
@@ -250,10 +286,37 @@ async def handle_list_tools():
         Tool(name="delete_project", description="Delete project", inputSchema=_id_schema("project_id")),
 
         # Proposals
-        Tool(name="get_proposals", description="List proposals. Status: 0=draft, 1=validated, 2=signed, 3=refused",
-             inputSchema=_list_schema(with_status=True, status_type="integer")),
+        Tool(name="get_proposals", description="List proposals with filters. Status: 0=draft, 1=validated, 2=signed, 3=refused",
+             inputSchema={"type": "object", "properties": {
+                 "limit": {"type": "integer", "default": 50, "description": "Max results (default 50)"},
+                 "status": {"type": "integer", "description": "Filter by status: 0=draft, 1=validated, 2=signed, 3=refused"},
+                 "socid": {"type": "integer", "description": "Filter by customer ID"},
+                 "year": {"type": "integer", "description": "Filter by year (e.g., 2026)"},
+                 "month": {"type": "integer", "minimum": 1, "maximum": 12, "description": "Filter by month (1-12), requires year"},
+                 "date_start": {"type": "string", "description": "Filter from date (YYYY-MM-DD)"},
+                 "date_end": {"type": "string", "description": "Filter to date (YYYY-MM-DD)"},
+                 "sortorder": {"type": "string", "enum": ["ASC", "DESC"], "default": "DESC", "description": "Sort order"}
+             }, "additionalProperties": False}),
+        Tool(name="get_customer_proposals", description="Get proposals for a customer. Status: 0=draft, 1=validated/open, 2=signed/won, 3=refused/lost",
+             inputSchema={"type": "object", "properties": {
+                 "socid": {"type": "integer", "description": "Customer ID (required)"},
+                 "limit": {"type": "integer", "default": 10, "description": "Max results (default 10)"},
+                 "status": {"type": "integer", "description": "Filter by single status (0-3)"},
+                 "statuses": {"type": "array", "items": {"type": "integer"}, "description": "Filter by multiple statuses, e.g. [0,1] for open proposals"},
+                 "year": {"type": "integer", "description": "Filter by year (e.g., 2026)"},
+                 "month": {"type": "integer", "minimum": 1, "maximum": 12, "description": "Filter by month (1-12), requires year"},
+                 "include_draft": {"type": "boolean", "default": False, "description": "Include draft (0)"},
+                 "include_validated": {"type": "boolean", "default": False, "description": "Include validated/open (1)"},
+                 "include_signed": {"type": "boolean", "default": False, "description": "Include signed/won (2)"},
+                 "include_refused": {"type": "boolean", "default": False, "description": "Include refused/lost (3)"}
+             }, "required": ["socid"], "additionalProperties": False}),
         Tool(name="get_proposal_by_id", description="Get proposal by ID", inputSchema=_id_schema("proposal_id")),
-        Tool(name="search_proposals", description="Search proposals by ref/customer", inputSchema=_search_schema()),
+        Tool(name="search_proposals", description="Search proposals by ref/customer with sorting",
+             inputSchema={"type": "object", "properties": {
+                 "query": {"type": "string", "description": "Search term for ref or customer name"},
+                 "limit": {"type": "integer", "default": 20},
+                 "sortorder": {"type": "string", "enum": ["ASC", "DESC"], "default": "DESC"}
+             }, "required": ["query"], "additionalProperties": False}),
         Tool(name="create_proposal", description="Create proposal with optional lines",
              inputSchema={"type": "object", "properties": {
                  "customer_id": {"type": "integer"},
@@ -463,7 +526,25 @@ async def _dispatch_tool(client: DolibarrClient, name: str, args: dict) -> Any:
 
     # Invoices
     if name == "get_invoices":
-        result = await client.get_invoices(args.get("limit", 100), args.get("status"))
+        result = await client.get_invoices(
+            limit=args.get("limit", 50),
+            status=args.get("status"),
+            socid=args.get("socid"),
+            year=args.get("year"),
+            month=args.get("month"),
+            date_start=args.get("date_start"),
+            date_end=args.get("date_end"),
+            sortorder=args.get("sortorder", "DESC"),
+        )
+        return _filter_fields(result, INVOICE_FIELDS)
+    if name == "get_customer_invoices":
+        result = await client.get_customer_invoices(
+            socid=args["socid"],
+            limit=args.get("limit", 10),
+            status=args.get("status"),
+            year=args.get("year"),
+            month=args.get("month"),
+        )
         return _filter_fields(result, INVOICE_FIELDS)
     if name == "get_invoice_by_id":
         result = await client.get_invoice_by_id(args["invoice_id"])
@@ -488,7 +569,25 @@ async def _dispatch_tool(client: DolibarrClient, name: str, args: dict) -> Any:
 
     # Orders
     if name == "get_orders":
-        result = await client.get_orders(args.get("limit", 100), args.get("status"))
+        result = await client.get_orders(
+            limit=args.get("limit", 50),
+            status=args.get("status"),
+            socid=args.get("socid"),
+            year=args.get("year"),
+            month=args.get("month"),
+            date_start=args.get("date_start"),
+            date_end=args.get("date_end"),
+            sortorder=args.get("sortorder", "DESC"),
+        )
+        return _filter_fields(result, ORDER_FIELDS)
+    if name == "get_customer_orders":
+        result = await client.get_customer_orders(
+            socid=args["socid"],
+            limit=args.get("limit", 10),
+            status=args.get("status"),
+            year=args.get("year"),
+            month=args.get("month"),
+        )
         return _filter_fields(result, ORDER_FIELDS)
     if name == "get_order_by_id":
         result = await client.get_order_by_id(args["order_id"])
@@ -537,14 +636,41 @@ async def _dispatch_tool(client: DolibarrClient, name: str, args: dict) -> Any:
 
     # Proposals
     if name == "get_proposals":
-        result = await client.get_proposals(args.get("limit", 100), args.get("status"))
+        result = await client.get_proposals(
+            limit=args.get("limit", 50),
+            status=args.get("status"),
+            socid=args.get("socid"),
+            year=args.get("year"),
+            month=args.get("month"),
+            date_start=args.get("date_start"),
+            date_end=args.get("date_end"),
+            sortorder=args.get("sortorder", "DESC"),
+        )
+        return _filter_fields(result, PROPOSAL_FIELDS)
+    if name == "get_customer_proposals":
+        result = await client.get_customer_proposals(
+            socid=args["socid"],
+            limit=args.get("limit", 10),
+            status=args.get("status"),
+            statuses=args.get("statuses"),
+            year=args.get("year"),
+            month=args.get("month"),
+            include_draft=args.get("include_draft", False),
+            include_validated=args.get("include_validated", False),
+            include_signed=args.get("include_signed", False),
+            include_refused=args.get("include_refused", False),
+        )
         return _filter_fields(result, PROPOSAL_FIELDS)
     if name == "get_proposal_by_id":
         result = await client.get_proposal_by_id(args["proposal_id"])
         return _filter_fields(result, PROPOSAL_FIELDS)
     if name == "search_proposals":
         q = _escape_sqlfilter(args["query"])
-        result = await client.search_proposals(f"((t.ref:like:'%{q}%') OR (s.nom:like:'%{q}%'))", args.get("limit", 20))
+        result = await client.search_proposals(
+            f"((t.ref:like:'%{q}%') OR (s.nom:like:'%{q}%'))",
+            args.get("limit", 20),
+            sortorder=args.get("sortorder", "DESC"),
+        )
         return _filter_fields(result, PROPOSAL_FIELDS)
     if name == "create_proposal":
         return await client.create_proposal(**args)

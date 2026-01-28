@@ -27,15 +27,15 @@ class TestCacheStrategies:
 
     def test_get_ttl_for_entity_read_ops(self):
         """Test TTL for read operations."""
-        # Products have LONG cache
-        assert get_ttl_for_entity("get_products") == 900
-        assert get_ttl_for_entity("get_product_by_id") == 900
+        # Products have EXTENDED cache (30 min)
+        assert get_ttl_for_entity("get_products") == 1800
+        assert get_ttl_for_entity("get_product_by_id") == 1800
 
-        # Customers have MEDIUM cache
+        # Customers have MEDIUM cache (5 min)
         assert get_ttl_for_entity("get_customers") == 300
 
-        # Invoices have SHORT cache
-        assert get_ttl_for_entity("get_invoices") == 30
+        # Invoices have MEDIUM cache (5 min)
+        assert get_ttl_for_entity("get_invoices") == 300
 
     def test_get_ttl_for_entity_write_ops(self):
         """Test TTL for write operations (should be 0)."""
