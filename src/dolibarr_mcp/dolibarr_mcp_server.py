@@ -311,9 +311,9 @@ async def handle_list_tools():
                  "include_refused": {"type": "boolean", "default": False, "description": "Include refused/lost (3)"}
              }, "required": ["socid"], "additionalProperties": False}),
         Tool(name="get_proposal_by_id", description="Get proposal by ID", inputSchema=_id_schema("proposal_id")),
-        Tool(name="search_proposals", description="Search proposals by ref/customer with sorting",
+        Tool(name="search_proposals", description="Search proposals by reference. Use get_customer_proposals for customer filtering.",
              inputSchema={"type": "object", "properties": {
-                 "query": {"type": "string", "description": "Search term for ref or customer name"},
+                 "query": {"type": "string", "description": "Search term for proposal reference"},
                  "limit": {"type": "integer", "default": 20},
                  "sortorder": {"type": "string", "enum": ["ASC", "DESC"], "default": "DESC"}
              }, "required": ["query"], "additionalProperties": False}),
@@ -666,8 +666,9 @@ async def _dispatch_tool(client: DolibarrClient, name: str, args: dict) -> Any:
         return _filter_fields(result, PROPOSAL_FIELDS)
     if name == "search_proposals":
         q = _escape_sqlfilter(args["query"])
+        # Note: Only search by ref - searching by customer name requires JOIN not supported by API
         result = await client.search_proposals(
-            f"((t.ref:like:'%{q}%') OR (s.nom:like:'%{q}%'))",
+            f"(t.ref:like:'%{q}%')",
             args.get("limit", 20),
             sortorder=args.get("sortorder", "DESC"),
         )

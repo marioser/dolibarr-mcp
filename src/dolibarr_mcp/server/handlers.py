@@ -109,9 +109,9 @@ async def _handle_search(
         result = await method(sqlfilter, limit)
 
     elif handler_type == "proposal":
-        # Search proposals by ref or customer name
+        # Search proposals by ref only (customer name search requires JOIN not supported by API)
         q = _escape_sqlfilter(args["query"])
-        sqlfilter = f"((t.ref:like:'%{q}%') OR (s.nom:like:'%{q}%'))"
+        sqlfilter = f"(t.ref:like:'%{q}%')"
         result = await method(sqlfilter, limit)
 
     elif handler_type == "resolve_ref":
