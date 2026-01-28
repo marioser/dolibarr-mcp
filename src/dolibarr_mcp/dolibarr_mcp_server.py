@@ -317,12 +317,19 @@ def _format_response(data: Any, use_toon: bool = True) -> str:
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: dict):
     """Handle tool calls with caching and TOON format responses."""
+    import time
     global _cache
     use_toon = os.getenv("OUTPUT_FORMAT", "toon").lower() == "toon"
+    start_time = time.time()
+
+    # Log incoming request
+    args_str = json.dumps(arguments, default=str) if arguments else "{}"
+    print(f"📥 TOOL: {name} | Args: {args_str}", file=sys.stderr)
 
     try:
         # Initialize cache if needed
         cache = await _get_cache()
+        cache_status = "DISABLED"
 
         # Check cache for read operations
         cache_key = None
@@ -330,8 +337,14 @@ async def handle_call_tool(name: str, arguments: dict):
             cache_key = cache.make_tool_key(name, arguments)
             cached = await cache.get(cache_key)
             if cached is not None:
-                logging.debug(f"Cache HIT: {name}")
+                elapsed = (time.time() - start_time) * 1000
+                print(f"⚡ CACHE HIT: {name} | Time: {elapsed:.1f}ms", file=sys.stderr)
                 return [TextContent(type="text", text=_format_response(cached, use_toon))]
+            cache_status = "MISS"
+        elif cache and cache._connected:
+            cache_status = "SKIP (write op)"
+        elif not cache:
+            cache_status = "DISABLED"
 
         # Execute tool
         config = Config()
@@ -342,20 +355,29 @@ async def handle_call_tool(name: str, arguments: dict):
         if cache and cache._connected and cache_key and should_cache(name):
             ttl = get_ttl_for_entity(name)
             await cache.set(cache_key, result, ttl)
-            logging.debug(f"Cache SET: {name} (TTL: {ttl}s)")
+            cache_status = f"MISS → STORED (TTL: {ttl}s)"
 
         # Invalidate related caches for write operations
         if cache and cache._connected:
             targets = get_invalidation_targets(name)
-            for target in targets:
-                await cache.invalidate_pattern(f"tool:{target}:*")
+            if targets:
+                for target in targets:
+                    await cache.invalidate_pattern(f"tool:{target}:*")
+                print(f"🗑️  CACHE INVALIDATED: {targets}", file=sys.stderr)
+
+        elapsed = (time.time() - start_time) * 1000
+        print(f"✅ DONE: {name} | Cache: {cache_status} | Time: {elapsed:.1f}ms", file=sys.stderr)
 
         return [TextContent(type="text", text=_format_response(result, use_toon))]
 
     except DolibarrAPIError as e:
+        elapsed = (time.time() - start_time) * 1000
+        print(f"❌ ERROR: {name} | {e} | Time: {elapsed:.1f}ms", file=sys.stderr)
         error_response = {"error": str(e), "status": e.status_code or 500}
         return [TextContent(type="text", text=_format_response(error_response, use_toon))]
     except Exception as e:
+        elapsed = (time.time() - start_time) * 1000
+        print(f"❌ ERROR: {name} | {e} | Time: {elapsed:.1f}ms", file=sys.stderr)
         error_response = {"error": f"Tool failed: {e}", "status": 500}
         return [TextContent(type="text", text=_format_response(error_response, use_toon))]
 
