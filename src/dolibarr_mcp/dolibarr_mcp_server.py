@@ -165,7 +165,8 @@ async def handle_list_tools():
              inputSchema={"type": "object", "properties": {"ref_prefix": {"type": "string"}, "limit": {"type": "integer", "default": 20}}, "required": ["ref_prefix"], "additionalProperties": False}),
         Tool(name="search_products_by_label", description="Search products by label/name",
              inputSchema=_search_schema()),
-        Tool(name="search_customers", description="Search customers by name/alias",
+        Tool(name="search_customers",
+             description="Search customers/thirdparties by name or alias. IMPORTANT: Use this first to get the 'id' (socid) when you need to query proposals, invoices, or orders for a customer. Returns customer ID that you can use with get_customer_proposals, get_customer_invoices, get_customer_orders.",
              inputSchema=_search_schema()),
         Tool(name="resolve_product_ref", description="Get exact product by reference",
              inputSchema={"type": "object", "properties": {"ref": {"type": "string"}}, "required": ["ref"], "additionalProperties": False}),
@@ -200,22 +201,24 @@ async def handle_list_tools():
         Tool(name="delete_product", description="Delete product", inputSchema=_id_schema("product_id")),
 
         # Invoices
-        Tool(name="get_invoices", description="List invoices with filters. Status: draft, unpaid, paid",
+        Tool(name="get_invoices",
+             description="List invoices with filters. RECOMMENDED: Use get_customer_invoices when filtering by customer. Status: 'draft', 'unpaid', 'paid'. Results sorted by date DESC.",
              inputSchema={"type": "object", "properties": {
                  "limit": {"type": "integer", "default": 50, "description": "Max results (default 50)"},
-                 "status": {"type": "string", "description": "Filter by status: draft, unpaid, paid"},
-                 "socid": {"type": "integer", "description": "Filter by customer ID"},
+                 "status": {"type": "string", "description": "Filter by status: 'draft', 'unpaid', 'paid'"},
+                 "socid": {"type": "integer", "description": "Filter by customer ID (use get_customer_invoices instead)"},
                  "year": {"type": "integer", "description": "Filter by year (e.g., 2026)"},
                  "month": {"type": "integer", "minimum": 1, "maximum": 12, "description": "Filter by month (1-12), requires year"},
                  "date_start": {"type": "string", "description": "Filter from date (YYYY-MM-DD)"},
                  "date_end": {"type": "string", "description": "Filter to date (YYYY-MM-DD)"},
                  "sortorder": {"type": "string", "enum": ["ASC", "DESC"], "default": "DESC"}
              }, "additionalProperties": False}),
-        Tool(name="get_customer_invoices", description="Get latest invoices for a customer",
+        Tool(name="get_customer_invoices",
+             description="BEST tool for customer invoices. Get invoices for a specific customer. Use status='unpaid' for pending payments. First use search_customers to get the socid if you only have the customer name.",
              inputSchema={"type": "object", "properties": {
-                 "socid": {"type": "integer", "description": "Customer ID (required)"},
+                 "socid": {"type": "integer", "description": "Customer ID (required). Use search_customers first if you only have the name."},
                  "limit": {"type": "integer", "default": 10, "description": "Max results (default 10)"},
-                 "status": {"type": "string", "description": "Filter by status: draft, unpaid, paid"},
+                 "status": {"type": "string", "description": "Filter by status: 'draft', 'unpaid', 'paid'"},
                  "year": {"type": "integer", "description": "Filter by year (e.g., 2026)"},
                  "month": {"type": "integer", "minimum": 1, "maximum": 12, "description": "Filter by month (1-12), requires year"}
              }, "required": ["socid"], "additionalProperties": False}),
@@ -239,20 +242,22 @@ async def handle_list_tools():
              inputSchema={"type": "object", "properties": {"invoice_id": {"type": "integer"}, "warehouse_id": {"type": "integer", "default": 0}}, "required": ["invoice_id"], "additionalProperties": False}),
 
         # Orders
-        Tool(name="get_orders", description="List orders with filters",
+        Tool(name="get_orders",
+             description="List orders with filters. RECOMMENDED: Use get_customer_orders when filtering by customer. Results sorted by date DESC.",
              inputSchema={"type": "object", "properties": {
                  "limit": {"type": "integer", "default": 50, "description": "Max results (default 50)"},
                  "status": {"type": "string", "description": "Filter by status"},
-                 "socid": {"type": "integer", "description": "Filter by customer ID"},
+                 "socid": {"type": "integer", "description": "Filter by customer ID (use get_customer_orders instead)"},
                  "year": {"type": "integer", "description": "Filter by year (e.g., 2026)"},
                  "month": {"type": "integer", "minimum": 1, "maximum": 12, "description": "Filter by month (1-12), requires year"},
                  "date_start": {"type": "string", "description": "Filter from date (YYYY-MM-DD)"},
                  "date_end": {"type": "string", "description": "Filter to date (YYYY-MM-DD)"},
                  "sortorder": {"type": "string", "enum": ["ASC", "DESC"], "default": "DESC"}
              }, "additionalProperties": False}),
-        Tool(name="get_customer_orders", description="Get latest orders for a customer",
+        Tool(name="get_customer_orders",
+             description="BEST tool for customer orders. Get orders for a specific customer. First use search_customers to get the socid if you only have the customer name.",
              inputSchema={"type": "object", "properties": {
-                 "socid": {"type": "integer", "description": "Customer ID (required)"},
+                 "socid": {"type": "integer", "description": "Customer ID (required). Use search_customers first if you only have the name."},
                  "limit": {"type": "integer", "default": 10, "description": "Max results (default 10)"},
                  "status": {"type": "string", "description": "Filter by status"},
                  "year": {"type": "integer", "description": "Filter by year (e.g., 2026)"},
@@ -286,34 +291,39 @@ async def handle_list_tools():
         Tool(name="delete_project", description="Delete project", inputSchema=_id_schema("project_id")),
 
         # Proposals
-        Tool(name="get_proposals", description="List proposals with filters. Status: 0=draft, 1=validated, 2=signed, 3=refused",
+        Tool(name="get_proposals",
+             description="List proposals/quotes with filters. RECOMMENDED: Use get_customer_proposals instead when filtering by customer. Status codes: 0=draft, 1=validated/open, 2=signed/won, 3=refused/lost. Results sorted by date DESC.",
              inputSchema={"type": "object", "properties": {
                  "limit": {"type": "integer", "default": 50, "description": "Max results (default 50)"},
-                 "status": {"type": "integer", "description": "Filter by status: 0=draft, 1=validated, 2=signed, 3=refused"},
-                 "socid": {"type": "integer", "description": "Filter by customer ID"},
+                 "status": {"type": "integer", "description": "Filter by status: 0=draft, 1=validated, 2=signed/won, 3=refused/lost"},
+                 "socid": {"type": "integer", "description": "Filter by customer ID (use get_customer_proposals instead)"},
                  "year": {"type": "integer", "description": "Filter by year (e.g., 2026)"},
                  "month": {"type": "integer", "minimum": 1, "maximum": 12, "description": "Filter by month (1-12), requires year"},
                  "date_start": {"type": "string", "description": "Filter from date (YYYY-MM-DD)"},
                  "date_end": {"type": "string", "description": "Filter to date (YYYY-MM-DD)"},
                  "sortorder": {"type": "string", "enum": ["ASC", "DESC"], "default": "DESC", "description": "Sort order"}
              }, "additionalProperties": False}),
-        Tool(name="get_customer_proposals", description="Get proposals for a customer. Status: 0=draft, 1=validated/open, 2=signed/won, 3=refused/lost",
+        Tool(name="get_customer_proposals",
+             description="BEST tool for customer proposals. Get proposals for a specific customer with flexible status filtering. Use statuses=[0,1] for open/pending, status=2 for won, status=3 for lost. If no status filter specified, returns ALL proposals. First use search_customers to get the socid if you only have the customer name.",
              inputSchema={"type": "object", "properties": {
-                 "socid": {"type": "integer", "description": "Customer ID (required)"},
+                 "socid": {"type": "integer", "description": "Customer ID (required). Use search_customers first if you only have the name."},
                  "limit": {"type": "integer", "default": 10, "description": "Max results (default 10)"},
-                 "status": {"type": "integer", "description": "Filter by single status (0-3)"},
-                 "statuses": {"type": "array", "items": {"type": "integer"}, "description": "Filter by multiple statuses, e.g. [0,1] for open proposals"},
+                 "status": {"type": "integer", "description": "Filter by single status: 0=draft, 1=validated, 2=signed/won, 3=refused/lost"},
+                 "statuses": {"type": "array", "items": {"type": "integer"}, "description": "Filter multiple statuses. Example: [0,1] for open proposals, [2,3] for closed"},
                  "year": {"type": "integer", "description": "Filter by year (e.g., 2026)"},
                  "month": {"type": "integer", "minimum": 1, "maximum": 12, "description": "Filter by month (1-12), requires year"},
-                 "include_draft": {"type": "boolean", "default": False, "description": "Include draft (0)"},
-                 "include_validated": {"type": "boolean", "default": False, "description": "Include validated/open (1)"},
-                 "include_signed": {"type": "boolean", "default": False, "description": "Include signed/won (2)"},
-                 "include_refused": {"type": "boolean", "default": False, "description": "Include refused/lost (3)"}
+                 "include_draft": {"type": "boolean", "default": False, "description": "Include draft proposals (status=0)"},
+                 "include_validated": {"type": "boolean", "default": False, "description": "Include validated/open proposals (status=1)"},
+                 "include_signed": {"type": "boolean", "default": False, "description": "Include signed/won proposals (status=2)"},
+                 "include_refused": {"type": "boolean", "default": False, "description": "Include refused/lost proposals (status=3)"}
              }, "required": ["socid"], "additionalProperties": False}),
-        Tool(name="get_proposal_by_id", description="Get proposal by ID", inputSchema=_id_schema("proposal_id")),
-        Tool(name="search_proposals", description="Search proposals by reference. Use get_customer_proposals for customer filtering.",
+        Tool(name="get_proposal_by_id",
+             description="Get a single proposal by its ID. Use this when you have the exact proposal ID.",
+             inputSchema=_id_schema("proposal_id")),
+        Tool(name="search_proposals",
+             description="Search proposals by reference number (e.g., 'OF26012770'). NOTE: This only searches by ref, NOT by customer name. To find proposals by customer, first use search_customers to get socid, then use get_customer_proposals.",
              inputSchema={"type": "object", "properties": {
-                 "query": {"type": "string", "description": "Search term for proposal reference"},
+                 "query": {"type": "string", "description": "Search term for proposal reference (e.g., 'OF26')"},
                  "limit": {"type": "integer", "default": 20},
                  "sortorder": {"type": "string", "enum": ["ASC", "DESC"], "default": "DESC"}
              }, "required": ["query"], "additionalProperties": False}),
@@ -341,7 +351,8 @@ async def handle_list_tools():
         Tool(name="set_proposal_to_draft", description="Revert proposal to draft", inputSchema=_id_schema("proposal_id")),
 
         # Raw API (escape hatch)
-        Tool(name="dolibarr_raw_api", description="Direct API call (use only if no specific tool exists)",
+        Tool(name="dolibarr_raw_api",
+             description="WARNING: Only use this as last resort! Direct API call for advanced operations not covered by other tools. DO NOT use for proposals/invoices/orders - use the specific tools instead. If you use sqlfilters, note that column names are internal (e.g., 't.fk_soc' not 't.socid').",
              inputSchema={"type": "object", "properties": {"method": {"type": "string", "enum": ["GET", "POST", "PUT", "DELETE"]}, "endpoint": {"type": "string"}, "params": {"type": "object"}, "data": {"type": "object"}}, "required": ["method", "endpoint"], "additionalProperties": False}),
     ]
 
