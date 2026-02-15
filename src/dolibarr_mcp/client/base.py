@@ -7,6 +7,7 @@ the Dolibarr REST API with automatic retry, validation, and error handling.
 import asyncio
 import json
 import logging
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
@@ -212,6 +213,37 @@ class DolibarrClient:
                 invalid_fields=invalid_fields if invalid_fields else None,
             )
 
+        return payload
+
+    @staticmethod
+    def _build_proposal_update_payload(
+        current: Dict[str, Any],
+        updates: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Build a conservative payload for proposal updates across Dolibarr versions."""
+        editable_fields = (
+            "socid",
+            "date",
+            "datep",
+            "fin_validite",
+            "duree_validite",
+            "note_public",
+            "note_private",
+            "ref_client",
+            "cond_reglement_id",
+            "mode_reglement_id",
+            "fk_project",
+            "fk_input_reason",
+            "fk_delivery_address",
+            "availability_id",
+            "demand_reason_id",
+        )
+        payload = {
+            field: current[field]
+            for field in editable_fields
+            if field in current and current[field] is not None
+        }
+        payload.update(updates)
         return payload
 
     # =========================================================================
@@ -734,7 +766,23 @@ class DolibarrClient:
     async def update_proposal(self, proposal_id: int, data: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Dict[str, Any]:
         """Update an existing proposal."""
         payload = self._merge_payload(data, **kwargs)
-        return await self.request("PUT", f"proposals/{proposal_id}", data=payload)
+        if "project_id" in payload and "fk_project" not in payload:
+            payload["fk_project"] = payload.pop("project_id")
+
+        if not payload:
+            raise build_validation_error(
+                endpoint=f"proposals/{proposal_id}",
+                missing_fields=["at least one field to update"],
+            )
+
+        try:
+            return await self.request("PUT", f"proposals/{proposal_id}", data=payload)
+        except DolibarrAPIError as exc:
+            if exc.status_code is not None and exc.status_code < 500:
+                raise
+            current = await self.get_proposal_by_id(proposal_id)
+            fallback_payload = self._build_proposal_update_payload(current, payload)
+            return await self.request("PUT", f"proposals/{proposal_id}", data=fallback_payload)
 
     async def delete_proposal(self, proposal_id: int) -> Dict[str, Any]:
         """Delete a proposal."""
@@ -745,16 +793,33 @@ class DolibarrClient:
         payload = self._merge_payload(data, **kwargs)
         if "product_id" in payload:
             payload["fk_product"] = payload.pop("product_id")
-        return await self.request("POST", f"proposals/{proposal_id}/lines", data=payload)
+        # Dolibarr proposals API commonly expects singular /line for a single line.
+        # Keep compatibility with older instances by retrying /lines if singular is not available.
+        try:
+            return await self.request("POST", f"proposals/{proposal_id}/line", data=payload)
+        except DolibarrAPIError as exc:
+            if exc.status_code not in {404, 405, 501}:
+                raise
+            return await self.request("POST", f"proposals/{proposal_id}/lines", data=payload)
 
     async def update_proposal_line(self, proposal_id: int, line_id: int, data: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Dict[str, Any]:
         """Update a line in a proposal."""
         payload = self._merge_payload(data, **kwargs)
-        return await self.request("PUT", f"proposals/{proposal_id}/lines/{line_id}", data=payload)
+        try:
+            return await self.request("PUT", f"proposals/{proposal_id}/lines/{line_id}", data=payload)
+        except DolibarrAPIError as exc:
+            if exc.status_code not in {404, 405, 501}:
+                raise
+            return await self.request("PUT", f"proposals/{proposal_id}/line/{line_id}", data=payload)
 
     async def delete_proposal_line(self, proposal_id: int, line_id: int) -> Dict[str, Any]:
         """Delete a line from a proposal."""
-        return await self.request("DELETE", f"proposals/{proposal_id}/lines/{line_id}")
+        try:
+            return await self.request("DELETE", f"proposals/{proposal_id}/lines/{line_id}")
+        except DolibarrAPIError as exc:
+            if exc.status_code not in {404, 405, 501}:
+                raise
+            return await self.request("DELETE", f"proposals/{proposal_id}/line/{line_id}")
 
     async def validate_proposal(self, proposal_id: int, not_trigger: int = 0) -> Dict[str, Any]:
         """Validate a proposal (change status from draft to validated)."""
@@ -782,4 +847,15 @@ class DolibarrClient:
         data: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Make raw API call to any Dolibarr endpoint."""
+        normalized_method = method.upper()
+        # Compatibility fix: proposals/{id}/lines can be interpreted as bulk insert
+        # in some Dolibarr versions. For single-line objects, use singular /line.
+        if (
+            normalized_method == "POST"
+            and data is not None
+            and isinstance(data, dict)
+            and re.fullmatch(r"/?proposals/\d+/lines/?", endpoint)
+        ):
+            endpoint = endpoint.rstrip("/")
+            endpoint = f"{endpoint[:-1]}"
         return await self.request(method, endpoint, params=params, data=data)
