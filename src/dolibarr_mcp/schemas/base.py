@@ -174,6 +174,10 @@ def line_schema(entity: str) -> Dict[str, Any]:
                 "type": "string",
                 "description": "Line description"
             },
+            "description": {
+                "type": "string",
+                "description": "Alias of desc"
+            },
             "qty": {
                 "type": "number",
                 "description": "Quantity"
@@ -194,9 +198,17 @@ def line_schema(entity: str) -> Dict[str, Any]:
             "tva_tx": {
                 "type": "number",
                 "description": "VAT rate (e.g., 19.0)"
+            },
+            "remise_percent": {
+                "type": "number",
+                "description": "Discount percentage (0-100)"
             }
         },
-        "required": [f"{entity}_id", "desc", "qty", "subprice"],
+        "required": [f"{entity}_id", "qty", "subprice"],
+        "anyOf": [
+            {"required": ["desc"]},
+            {"required": ["description"]}
+        ],
         "additionalProperties": False
     }
 
@@ -238,6 +250,10 @@ def update_line_schema(entity: str) -> Dict[str, Any]:
                 "type": "string",
                 "description": "New line description"
             },
+            "description": {
+                "type": "string",
+                "description": "Alias of desc"
+            },
             "qty": {
                 "type": "number",
                 "description": "New quantity"
@@ -249,6 +265,18 @@ def update_line_schema(entity: str) -> Dict[str, Any]:
             "tva_tx": {
                 "type": "number",
                 "description": "New VAT rate"
+            },
+            "remise_percent": {
+                "type": "number",
+                "description": "New discount percentage (0-100)"
+            },
+            "product_id": {
+                "type": "integer",
+                "description": "New linked product ID"
+            },
+            "product_type": {
+                "type": "integer",
+                "description": "0=product, 1=service"
             }
         },
         "required": [f"{entity}_id", "line_id"],

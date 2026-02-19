@@ -181,6 +181,10 @@ INVOICE_LINE_SCHEMA: Dict[str, Any] = {
             "type": "string",
             "description": "Line description (required)"
         },
+        "description": {
+            "type": "string",
+            "description": "Alias of desc"
+        },
         "qty": {
             "type": "number",
             "description": "Quantity (required, > 0)",
@@ -205,7 +209,11 @@ INVOICE_LINE_SCHEMA: Dict[str, Any] = {
             "description": "VAT rate percentage (e.g., 19.0)"
         }
     },
-    "required": ["desc", "qty", "subprice"]
+    "required": ["qty", "subprice"],
+    "anyOf": [
+        {"required": ["desc"]},
+        {"required": ["description"]}
+    ]
 }
 
 INVOICE_CREATE_SCHEMA: Dict[str, Any] = {
@@ -282,6 +290,10 @@ PROPOSAL_LINE_SCHEMA: Dict[str, Any] = {
             "type": "string",
             "description": "Line description (required)"
         },
+        "description": {
+            "type": "string",
+            "description": "Alias of desc"
+        },
         "qty": {
             "type": "number",
             "description": "Quantity (required)",
@@ -310,7 +322,11 @@ PROPOSAL_LINE_SCHEMA: Dict[str, Any] = {
             "description": "Discount percentage (0-100)"
         }
     },
-    "required": ["desc", "qty", "subprice"]
+    "required": ["qty", "subprice"],
+    "anyOf": [
+        {"required": ["desc"]},
+        {"required": ["description"]}
+    ]
 }
 
 PROPOSAL_CREATE_SCHEMA: Dict[str, Any] = {
@@ -319,6 +335,10 @@ PROPOSAL_CREATE_SCHEMA: Dict[str, Any] = {
         "customer_id": {
             "type": "integer",
             "description": "Customer/third-party ID (required)"
+        },
+        "socid": {
+            "type": "integer",
+            "description": "Dolibarr customer/third-party ID (alias of customer_id)"
         },
         "date": {
             "type": "string",
@@ -332,6 +352,54 @@ PROPOSAL_CREATE_SCHEMA: Dict[str, Any] = {
         "project_id": {
             "type": "integer",
             "description": "Link to project (optional)"
+        },
+        "fk_project": {
+            "type": "integer",
+            "description": "Dolibarr project ID (alias of project_id)"
+        },
+        "ref_client": {
+            "type": "string",
+            "description": "Customer reference"
+        },
+        "cond_reglement_id": {
+            "type": "integer",
+            "description": "Payment terms ID"
+        },
+        "mode_reglement_id": {
+            "type": "integer",
+            "description": "Payment method ID"
+        },
+        "availability_id": {
+            "type": "integer",
+            "description": "Availability/delivery lead time ID"
+        },
+        "demand_reason_id": {
+            "type": "integer",
+            "description": "Demand reason/source ID"
+        },
+        "fk_input_reason": {
+            "type": "integer",
+            "description": "Input/source reason ID"
+        },
+        "fk_delivery_address": {
+            "type": "integer",
+            "description": "Delivery address ID"
+        },
+        "date_livraison": {
+            "type": "string",
+            "description": "Delivery date in YYYY-MM-DD format"
+        },
+        "delivery_date": {
+            "type": "string",
+            "description": "Alias for delivery date in YYYY-MM-DD format"
+        },
+        "incoterms": {
+            "type": "string",
+            "description": "Incoterms text/code"
+        },
+        "tos": {
+            "type": "string",
+            "description": "Terms and conditions"
         },
         "note_public": {
             "type": "string",
@@ -347,7 +415,94 @@ PROPOSAL_CREATE_SCHEMA: Dict[str, Any] = {
             "items": PROPOSAL_LINE_SCHEMA
         }
     },
-    "required": ["customer_id"],
+    "anyOf": [
+        {"required": ["customer_id"]},
+        {"required": ["socid"]}
+    ],
+    "additionalProperties": False
+}
+
+PROPOSAL_UPDATE_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "proposal_id": {
+            "type": "integer",
+            "description": "Proposal ID (required)"
+        },
+        "date": {
+            "type": "string",
+            "description": "Proposal date in YYYY-MM-DD format"
+        },
+        "datep": {
+            "type": "string",
+            "description": "Dolibarr proposal date field (alias)"
+        },
+        "duree_validite": {
+            "type": "integer",
+            "description": "Validity duration in days"
+        },
+        "ref_client": {
+            "type": "string",
+            "description": "Customer reference"
+        },
+        "cond_reglement_id": {
+            "type": "integer",
+            "description": "Payment terms ID"
+        },
+        "mode_reglement_id": {
+            "type": "integer",
+            "description": "Payment method ID"
+        },
+        "project_id": {
+            "type": "integer",
+            "description": "Project ID (alias of fk_project)"
+        },
+        "fk_project": {
+            "type": "integer",
+            "description": "Dolibarr project ID"
+        },
+        "availability_id": {
+            "type": "integer",
+            "description": "Availability/delivery lead time ID"
+        },
+        "demand_reason_id": {
+            "type": "integer",
+            "description": "Demand reason/source ID"
+        },
+        "fk_input_reason": {
+            "type": "integer",
+            "description": "Input/source reason ID"
+        },
+        "fk_delivery_address": {
+            "type": "integer",
+            "description": "Delivery address ID"
+        },
+        "date_livraison": {
+            "type": "string",
+            "description": "Delivery date in YYYY-MM-DD format"
+        },
+        "delivery_date": {
+            "type": "string",
+            "description": "Alias for delivery date in YYYY-MM-DD format"
+        },
+        "incoterms": {
+            "type": "string",
+            "description": "Incoterms text/code"
+        },
+        "tos": {
+            "type": "string",
+            "description": "Terms and conditions"
+        },
+        "note_public": {
+            "type": "string",
+            "description": "Public notes"
+        },
+        "note_private": {
+            "type": "string",
+            "description": "Private notes"
+        }
+    },
+    "required": ["proposal_id"],
     "additionalProperties": False
 }
 

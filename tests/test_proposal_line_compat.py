@@ -134,6 +134,46 @@ async def test_update_proposal_fallback_after_server_error(client: DolibarrClien
 
 
 @pytest.mark.asyncio
+async def test_create_proposal_accepts_socid_and_line_description_alias(client: DolibarrClient) -> None:
+    client.request = AsyncMock(return_value={"id": 3236})
+
+    await client.create_proposal(
+        socid=542,
+        lines=[
+            {"description": "Linea desde alias", "qty": 1, "subprice": 100, "product_id": 88}
+        ],
+    )
+
+    client.request.assert_awaited_once()
+    payload = client.request.await_args.kwargs["data"]
+    assert payload["socid"] == 542
+    assert payload["lines"][0]["desc"] == "Linea desde alias"
+    assert payload["lines"][0]["fk_product"] == 88
+    assert "description" not in payload["lines"][0]
+    assert "product_id" not in payload["lines"][0]
+
+
+@pytest.mark.asyncio
+async def test_update_proposal_line_maps_description_and_product_aliases(client: DolibarrClient) -> None:
+    client.request = AsyncMock(return_value={"ok": True})
+
+    await client.update_proposal_line(
+        3235,
+        99,
+        description="Texto actualizado",
+        product_id=77,
+        qty=2,
+    )
+
+    client.request.assert_awaited_once()
+    payload = client.request.await_args.kwargs["data"]
+    assert payload["desc"] == "Texto actualizado"
+    assert payload["fk_product"] == 77
+    assert "description" not in payload
+    assert "product_id" not in payload
+
+
+@pytest.mark.asyncio
 async def test_update_proposal_line_falls_back_to_singular_endpoint(client: DolibarrClient) -> None:
     client.request = AsyncMock(
         side_effect=[

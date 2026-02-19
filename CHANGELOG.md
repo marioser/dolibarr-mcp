@@ -16,6 +16,7 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and adopts th
   - Use `socid` with `get_customer_proposals(...)` for reads/filtering.
   - Keep `dolibarr_raw_api` as escape hatch only.
 - API documentation now explicitly documents compression handling and proposal create requirements.
+- Proposal schemas now cover extended offer header fields (payment terms/method, references, delivery/source metadata) and line description aliases (`description` -> `desc`) to reduce unnecessary raw API usage.
 
 ## [2.1.0] - 2026-01-27
 

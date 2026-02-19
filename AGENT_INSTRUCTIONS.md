@@ -92,8 +92,26 @@ create_proposal(
 
 Notas:
 - `customer_id` es el campo esperado por el tool de creación.
+- También puedes usar `socid` en `create_proposal` si ya lo tienes.
 - Internamente se transforma a `socid` para Dolibarr.
 - Evita `dolibarr_raw_api` para `POST /proposals` salvo casos avanzados de diagnóstico.
+
+**Actualizar cabecera de propuesta (sin raw):**
+```
+update_proposal(
+  proposal_id=3183,
+  cond_reglement_id=2,
+  mode_reglement_id=6,
+  ref_client="ULTRACEM",
+  tos="DSERRANO_CONDICIONES COMERCIALES S&G",
+  incoterms="EXW"
+)
+```
+
+**Actualizar descripción de una línea existente:**
+```
+update_proposal_line(proposal_id=3183, line_id=99, description="Nuevo texto de línea")
+```
 
 ---
 

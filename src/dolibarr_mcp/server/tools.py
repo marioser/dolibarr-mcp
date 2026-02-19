@@ -42,6 +42,7 @@ from ..schemas.entities import (
     INVOICE_CREATE_SCHEMA,
     INVOICE_UPDATE_SCHEMA,
     PROPOSAL_CREATE_SCHEMA,
+    PROPOSAL_UPDATE_SCHEMA,
     USER_CREATE_SCHEMA,
     USER_UPDATE_SCHEMA,
     PROJECT_CREATE_SCHEMA,
@@ -533,25 +534,15 @@ TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {
     "create_proposal": {
         "method": "create_proposal",
         "fields": None,
-        "description": "Create proposal/quote. Required: customer_id (maps to socid). Optional: lines[], date, duree_validite (days), project_id, notes. For customer lookups use get_customer_proposals(socid=...). Prefer this tool over dolibarr_raw_api for proposal creation. Returns new proposal ID.",
+        "description": "Create proposal/quote. Required: customer_id or socid. Optional: lines[], date, duree_validite, notes, payment terms/method, project, delivery/source fields. For customer lookups use get_customer_proposals(socid=...). Prefer this tool over dolibarr_raw_api for proposal creation. Returns new proposal ID.",
         "schema": PROPOSAL_CREATE_SCHEMA,
         "paginated": False,
     },
     "update_proposal": {
         "method": "update_proposal",
         "fields": None,
-        "description": "Update draft proposal. Required: proposal_id. Optional: duree_validite, note_public, note_private. Only drafts can be modified.",
-        "schema": {
-            "type": "object",
-            "properties": {
-                "proposal_id": {"type": "integer", "description": "Proposal ID to update"},
-                "duree_validite": {"type": "integer", "description": "Validity period in days"},
-                "note_public": {"type": "string", "description": "Public notes (visible to customer)"},
-                "note_private": {"type": "string", "description": "Private/internal notes"}
-            },
-            "required": ["proposal_id"],
-            "additionalProperties": False
-        },
+        "description": "Update draft proposal header fields. Required: proposal_id. Supports validity, notes, payment terms/method, customer ref, project link, delivery/source fields, and related Dolibarr IDs.",
+        "schema": PROPOSAL_UPDATE_SCHEMA,
         "id_param": "proposal_id",
         "paginated": False,
     },

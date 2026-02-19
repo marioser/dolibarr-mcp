@@ -1260,10 +1260,14 @@ class DolibarrClient:
         # Map project_id to fk_project
         if "project_id" in payload and "fk_project" not in payload:
             payload["fk_project"] = payload.pop("project_id")
+        if "delivery_date" in payload and "date_livraison" not in payload:
+            payload["date_livraison"] = payload.pop("delivery_date")
 
         # Map product_id to fk_product in lines
         if "lines" in payload and isinstance(payload["lines"], list):
             for line in payload["lines"]:
+                if "description" in line and "desc" not in line:
+                    line["desc"] = line.pop("description")
                 if "product_id" in line:
                     line["fk_product"] = line.pop("product_id")
 
@@ -1288,6 +1292,8 @@ class DolibarrClient:
         payload = self._merge_payload(data, **kwargs)
         if "project_id" in payload and "fk_project" not in payload:
             payload["fk_project"] = payload.pop("project_id")
+        if "delivery_date" in payload and "date_livraison" not in payload:
+            payload["date_livraison"] = payload.pop("delivery_date")
 
         if not payload:
             raise DolibarrValidationError(
@@ -1354,6 +1360,8 @@ class DolibarrClient:
     async def add_proposal_line(self, proposal_id: int, data: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
         """Add a line to a proposal."""
         payload = self._merge_payload(data, **kwargs)
+        if "description" in payload and "desc" not in payload:
+            payload["desc"] = payload.pop("description")
 
         # Map product_id to fk_product if present
         if "product_id" in payload:
@@ -1371,6 +1379,10 @@ class DolibarrClient:
     async def update_proposal_line(self, proposal_id: int, line_id: int, data: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
         """Update a line in a proposal."""
         payload = self._merge_payload(data, **kwargs)
+        if "description" in payload and "desc" not in payload:
+            payload["desc"] = payload.pop("description")
+        if "product_id" in payload and "fk_product" not in payload:
+            payload["fk_product"] = payload.pop("product_id")
         try:
             return await self.request("PUT", f"proposals/{proposal_id}/lines/{line_id}", data=payload)
         except DolibarrAPIError as exc:

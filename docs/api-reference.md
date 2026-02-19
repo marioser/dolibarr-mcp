@@ -129,7 +129,7 @@ The wrapper validates payloads before sending them to Dolibarr. Required fields:
 | `POST /products` | `ref`, `label`, `type`, `price` | `type` accepts `product`/`0` or `service`/`1`. |
 | `POST /projects` | `ref`, `name`, `socid` | `title` is accepted as an alias for `name`. |
 | `POST /invoices` | `socid` | Provide `lines` for invoice content. |
-| `POST /proposals` | `customer_id` | `create_proposal` maps `customer_id` to Dolibarr `socid`. |
+| `POST /proposals` | `customer_id` or `socid` | `create_proposal` accepts either and maps aliases automatically. |
 | `POST /time` (timesheets) | `ref`, `task_id`, `duration`, `fk_project` | Provide `ref` or enable auto-generation. |
 
 #### Example: product create without `ref` (expected 400)
@@ -162,3 +162,12 @@ curl -X POST "https://dolibarr.example/api/index.php/projects" \
 If server-side reference auto-generation is enabled, omitting `ref` results in a
 predictable `AUTO_<timestamp>` reference. Otherwise, the wrapper will raise a
 client-side validation error before sending the request.
+
+### Proposal Field Coverage (without raw API)
+
+- `create_proposal` supports standard header + extended fields such as:
+  `ref_client`, `cond_reglement_id`, `mode_reglement_id`, `availability_id`,
+  `demand_reason_id`, `fk_input_reason`, `fk_delivery_address`,
+  `date_livraison`/`delivery_date`, `incoterms`, `tos`.
+- `update_proposal` supports the same header fields for draft proposals.
+- Proposal line tools accept `desc` and also `description` as alias.
