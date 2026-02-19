@@ -4,6 +4,19 @@ All notable changes to the Dolibarr MCP Server are documented here. The project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and adopts the
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
+## [Unreleased]
+
+### Fixed
+- Decoding/parsing of Dolibarr API responses now handles gzip payloads robustly in both client implementations (`client/base.py` and legacy `dolibarr_client.py`), including servers that return gzip bytes without `Content-Encoding`.
+- `POST /proposals` no longer fails with UTF-8 decode errors when Dolibarr returns compressed responses.
+
+### Changed
+- Tool descriptions and agent guidance now clarify proposal creation flow:
+  - Use `create_proposal(customer_id=...)` for creation.
+  - Use `socid` with `get_customer_proposals(...)` for reads/filtering.
+  - Keep `dolibarr_raw_api` as escape hatch only.
+- API documentation now explicitly documents compression handling and proposal create requirements.
+
 ## [2.1.0] - 2026-01-27
 
 ### Added

@@ -15,6 +15,9 @@ implements for PrestaShop.
   and `sqlfilters` query parameters.
 - **Identifiers** – Dolibarr returns both `id` (numeric) and `ref` (business
   reference) for most entities. The MCP tools expose both values to the client.
+- **Compression** – the client handles gzip-compressed responses transparently
+  (including misconfigured servers that send gzip bytes without
+  `Content-Encoding`), so tools can parse proposal create responses reliably.
 
 ## Supported Resources
 
@@ -126,6 +129,7 @@ The wrapper validates payloads before sending them to Dolibarr. Required fields:
 | `POST /products` | `ref`, `label`, `type`, `price` | `type` accepts `product`/`0` or `service`/`1`. |
 | `POST /projects` | `ref`, `name`, `socid` | `title` is accepted as an alias for `name`. |
 | `POST /invoices` | `socid` | Provide `lines` for invoice content. |
+| `POST /proposals` | `customer_id` | `create_proposal` maps `customer_id` to Dolibarr `socid`. |
 | `POST /time` (timesheets) | `ref`, `task_id`, `duration`, `fk_project` | Provide `ref` or enable auto-generation. |
 
 #### Example: product create without `ref` (expected 400)

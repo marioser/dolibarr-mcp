@@ -327,7 +327,8 @@ async def handle_list_tools():
                  "limit": {"type": "integer", "default": 20},
                  "sortorder": {"type": "string", "enum": ["ASC", "DESC"], "default": "DESC"}
              }, "required": ["query"], "additionalProperties": False}),
-        Tool(name="create_proposal", description="Create proposal with optional lines",
+        Tool(name="create_proposal",
+             description="Create proposal with optional lines. Required: customer_id (mapped to Dolibarr socid). Use get_customer_proposals with socid for proposal queries; use create_proposal for creation instead of dolibarr_raw_api.",
              inputSchema={"type": "object", "properties": {
                  "customer_id": {"type": "integer"},
                  "date": {"type": "string"},
@@ -368,7 +369,7 @@ async def handle_list_tools():
 
         # Raw API (escape hatch)
         Tool(name="dolibarr_raw_api",
-             description="WARNING: Only use this as last resort! Direct API call for advanced operations not covered by other tools. DO NOT use for proposals/invoices/orders - use the specific tools instead. If you use sqlfilters, note that column names are internal (e.g., 't.fk_soc' not 't.socid').",
+             description="WARNING: Only use this as last resort! Direct API call for advanced operations not covered by other tools. DO NOT use for standard proposals/invoices/orders workflows - use the specific tools instead. If you use sqlfilters, note that column names are internal (e.g., 't.fk_soc' not 't.socid').",
              inputSchema={"type": "object", "properties": {"method": {"type": "string", "enum": ["GET", "POST", "PUT", "DELETE"]}, "endpoint": {"type": "string"}, "params": {"type": "object"}, "data": {"type": "object"}}, "required": ["method", "endpoint"], "additionalProperties": False}),
     ]
 

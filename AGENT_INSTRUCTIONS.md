@@ -4,7 +4,7 @@
 
 1. **NUNCA uses `dolibarr_raw_api`** para consultas comunes. Usa los tools específicos.
 2. **NUNCA inventes nombres de columnas SQL**. Los tools ya tienen los filtros correctos.
-3. **Usa `socid`** (no `customer_id`) para filtrar por cliente en consultas.
+3. **Usa `socid`** para filtros de consulta (`get_customer_*`). Para creación de propuesta usa `customer_id` en `create_proposal` (el servidor lo mapea a `socid`).
 
 ---
 
@@ -71,6 +71,29 @@ search_proposals(query="OF26012770")
 ```
 get_proposal_by_id(proposal_id=3183)
 ```
+
+### Crear propuestas correctamente
+
+**Crear propuesta mínima (recomendado):**
+```
+create_proposal(customer_id=542, lines=[{"desc":"Servicio","qty":1,"subprice":100}])
+```
+
+**Con notas y validez:**
+```
+create_proposal(
+  customer_id=542,
+  duree_validite=30,
+  note_public="Oferta válida por 30 días",
+  note_private="Seguimiento comercial",
+  lines=[{"desc":"Consultoría","qty":2,"subprice":150}]
+)
+```
+
+Notas:
+- `customer_id` es el campo esperado por el tool de creación.
+- Internamente se transforma a `socid` para Dolibarr.
+- Evita `dolibarr_raw_api` para `POST /proposals` salvo casos avanzados de diagnóstico.
 
 ---
 

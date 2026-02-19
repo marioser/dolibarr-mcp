@@ -1,6 +1,7 @@
 """Professional Dolibarr API client with comprehensive CRUD operations."""
 
 import asyncio
+import gzip
 import json
 import logging
 import re
@@ -282,6 +283,37 @@ class DolibarrClient:
         payload.update(updates)
         return payload
 
+    def _parse_response_body(
+        self,
+        response: aiohttp.ClientResponse,
+        raw_response: bytes,
+    ) -> Tuple[str, Dict[str, Any]]:
+        """Parse response bytes safely, handling gzip and non-JSON payloads."""
+        payload = raw_response or b""
+        content_encoding = (response.headers.get("Content-Encoding") or "").lower()
+        looks_like_gzip = payload.startswith(b"\x1f\x8b")
+        if payload and ("gzip" in content_encoding or looks_like_gzip):
+            try:
+                payload = gzip.decompress(payload)
+            except (OSError, EOFError) as exc:
+                self.logger.warning(
+                    "Failed to decompress gzip response for %s: %s",
+                    response.url,
+                    exc,
+                )
+
+        response_text = payload.decode(response.charset or "utf-8", errors="replace") if payload else ""
+
+        try:
+            response_data = json.loads(payload) if payload else {}
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            try:
+                response_data = json.loads(response_text) if response_text else {}
+            except json.JSONDecodeError:
+                response_data = {"raw_response": response_text}
+
+        return response_text, response_data
+
     async def _make_request(
         self,
         method: str,
@@ -320,18 +352,13 @@ class DolibarrClient:
                     kwargs["json"] = data
 
                 async with self.session.request(method, url, **kwargs) as response:
-                    response_text = await response.text()
+                    raw_response = await response.read()
+                    response_text, response_data = self._parse_response_body(response, raw_response)
 
                     # Log response for debugging without leaking secrets
                     if self.debug_mode:
                         self.logger.debug("Response status: %s", response.status)
                         self.logger.debug("Response body (truncated): %s", response_text[:500])
-
-                    # Try to parse JSON response
-                    try:
-                        response_data = json.loads(response_text) if response_text else {}
-                    except json.JSONDecodeError:
-                        response_data = {"raw_response": response_text}
 
                     # Handle error responses
                     if response.status >= 400:

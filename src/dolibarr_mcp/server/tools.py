@@ -533,7 +533,7 @@ TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {
     "create_proposal": {
         "method": "create_proposal",
         "fields": None,
-        "description": "Create proposal/quote. Required: customer_id. Optional: lines[], date, duree_validite (days), project_id, notes. Returns new proposal ID.",
+        "description": "Create proposal/quote. Required: customer_id (maps to socid). Optional: lines[], date, duree_validite (days), project_id, notes. For customer lookups use get_customer_proposals(socid=...). Prefer this tool over dolibarr_raw_api for proposal creation. Returns new proposal ID.",
         "schema": PROPOSAL_CREATE_SCHEMA,
         "paginated": False,
     },
@@ -629,7 +629,7 @@ TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {
     "dolibarr_raw_api": {
         "method": "dolibarr_raw_api",
         "fields": None,
-        "description": "Direct API call. Use only if no specific tool exists. Required: method (GET/POST/PUT/DELETE), endpoint. Optional: params, data.",
+        "description": "Direct API call (escape hatch). Use only if no specific tool exists. Do not use for standard proposal/invoice/order workflows. Required: method (GET/POST/PUT/DELETE), endpoint. Optional: params, data.",
         "schema": RAW_API_SCHEMA,
         "paginated": False,
     },

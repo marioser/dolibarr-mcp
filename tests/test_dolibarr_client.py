@@ -1,5 +1,6 @@
 """Tests for Dolibarr client functionality."""
 
+import gzip
 import pytest
 from unittest.mock import AsyncMock, patch
 
@@ -240,6 +241,48 @@ class TestDolibarrClient:
 
             assert exc_info.value.status_code == 500
             assert "correlation_id" in exc_info.value.response_data
+
+    @pytest.mark.asyncio
+    @patch('aiohttp.ClientSession.request')
+    async def test_request_parses_gzip_json_response(self, mock_request):
+        """Ensure gzip-compressed JSON is decoded before parsing."""
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.headers = {"Content-Encoding": "gzip"}
+        mock_response.charset = "utf-8"
+        mock_response.url = "https://test.dolibarr.com/api/index.php/proposals"
+        mock_response.read.return_value = gzip.compress(b'{"id": 987}')
+        mock_request.return_value.__aenter__.return_value = mock_response
+
+        config = Config(
+            dolibarr_url="https://test.dolibarr.com/api/index.php",
+            api_key="test_key"
+        )
+
+        async with DolibarrClient(config) as client:
+            result = await client.request("POST", "proposals", data={"socid": 542})
+            assert result["id"] == 987
+
+    @pytest.mark.asyncio
+    @patch('aiohttp.ClientSession.request')
+    async def test_request_parses_gzip_magic_without_header(self, mock_request):
+        """Handle servers that send gzip bytes without Content-Encoding header."""
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.headers = {}
+        mock_response.charset = "utf-8"
+        mock_response.url = "https://test.dolibarr.com/api/index.php/proposals"
+        mock_response.read.return_value = gzip.compress(b'{"ok": true}')
+        mock_request.return_value.__aenter__.return_value = mock_response
+
+        config = Config(
+            dolibarr_url="https://test.dolibarr.com/api/index.php",
+            api_key="test_key"
+        )
+
+        async with DolibarrClient(config) as client:
+            result = await client.request("POST", "proposals", data={"socid": 542})
+            assert result["ok"] is True
     
     def test_url_building(self):
         """Test URL building functionality."""
